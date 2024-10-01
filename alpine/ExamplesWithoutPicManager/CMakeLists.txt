@@ -16,6 +16,9 @@ set (COMPILE_FLAGS ${OPAL_CXX_FLAGS})
 add_executable (UniformPlasmaTest UniformPlasmaTest.cpp)
 target_link_libraries (UniformPlasmaTest ${IPPL_LIBS})
 
+add_executable (ParticleCommunicationTest ParticleCommunicationTest.cpp)
+target_link_libraries (ParticleCommunicationTest ${IPPL_LIBS})
+
 add_executable (LandauDampingMixedPrecision LandauDampingMixedPrecision.cpp)
 target_link_libraries (LandauDampingMixedPrecision ${IPPL_LIBS})
 

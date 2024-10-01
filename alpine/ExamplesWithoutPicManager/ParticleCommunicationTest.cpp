@@ -83,11 +83,17 @@ int main(int argc, char* argv[]) {
             nr[d] = std::atoi(argv[arg++]);
         }
         
+        static IpplTimings::TimerRef updateTimer      = IpplTimings::getTimer("update");
+        
         // total number of particles and timesteps
         const size_type totalP = std::atoll(argv[arg++]);
         const unsigned int nt = std::atoi(argv[arg++]);
+        //P->loadbalancefreq_m = std::atoi(argv[arg++]);
 
-        msg << "Particle Communication Test" << endl << "nt " << nt << " Np= " << totalP << " grid= " << nr << endl;
+
+        msg << "Particle Communication Test" << endl << "nt " << nt << " Np= " << totalP << " grid= " << nr << endl; 
+
+        //<< " Loadbalancefreq=" << P->Loadbalancefreq_m << endl;
         
         // pointer to particles
         using bunch_type = ChargedParticles<PLayout_t<double, Dim>, double, Dim>;
@@ -143,15 +149,69 @@ int main(int argc, char* argv[]) {
             Rmin[d] = origin[d] + lDom[d].first() * hr[d];
             Rmax[d] = origin[d] + (lDom[d].last() + 1) * hr[d];
         }
+        
+        // print out box of each rank 
+        msg2all << Rmin << " " << Rmax << endl;
 
-        Inform m("local sizes");
-        m << Rmin << " " << Rmax << endl;
+        // each rank samples its particles positions
+        Kokkos::Random_XorShift64_Pool<> rand_pool64((size_type)(42 + 100 * ippl::Comm->rank()));
+        Kokkos::parallel_for(
+            nloc, generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
+                      P->R.getView(), rand_pool64, Rmin, Rmax));
+        Kokkos::fence();
+        P->q = P->Q_m / totalP;
+        P->P = 0.0;
+
+        P->initializeFields(mesh, FL);
+
+        P->update();
+
+        //P->dumpParticleData();
+
+        msg << "particles created and initial conditions assigned " << endl;
+        
+        //P->initializeORB(FL, mesh);
+        bool fromAnalyticDensity = false;
+
+        msg << "Starting iterations ..." << endl;
+        for(unsigned int it=0; it<nt; it++){
+            
+            // resample the positions 
+            Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
+                    P->R.getView(), rand_pool64, rmin, rmax));
+            Kokkos::fence();
+
+            
+            IpplTimings::startTimer(updateTimer);
+            P->update();
+            IpplTimings::stopTimer(updateTimer);
+
+            //P->dumpParticleData();
+            //ippl::Comm->barrier();
+
+            /*if (P->balance(totalP, it + 1)) {
+                msg << "Starting repartition" << endl;
+                //IpplTimings::startTimer(domainDecomposition);
+                P->repartition(FL, mesh, fromAnalyticDensity);
+                //IpplTimings::stopTimer(domainDecomposition);
+            }*/
 
 
+            P->scatterCIC(totalP, it + 1, hr);
+            P->gatherCIC();
 
+            P->time_m += dt;
+            msg << "Finished time step: " << it + 1 << " time: " << P->time_m << endl;
+        }
+       
+        msg << "Particle Communication Test: End." << endl;
+        IpplTimings::print();
+        IpplTimings::print(std::string("timing.dat"));
+        auto end = std::chrono::high_resolution_clock::now();
 
-    
-
+        std::chrono::duration<double> time_chrono =
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+        std::cout << "Elapsed time: " << time_chrono.count() << std::endl;
 
     }
 
