@@ -1,4 +1,5 @@
 build/
+build_master/
 doc/html
 doc/latex
 manual/*.aux

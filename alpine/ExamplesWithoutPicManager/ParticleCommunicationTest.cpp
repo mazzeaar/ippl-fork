@@ -177,11 +177,21 @@ int main(int argc, char* argv[]) {
         for(unsigned int it=0; it<nt; it++){
             
             // resample the positions 
-            Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
-                    P->R.getView(), rand_pool64, rmin, rmax));
-            Kokkos::fence();
-
+            //Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
+            //        P->R.getView(), rand_pool64, rmin, rmax));
+            //Kokkos::fence();
             
+            // sample displacement
+            Kokkos::parallel_for(
+                P->getLocalNum(),
+                generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
+                    P->P.getView(), rand_pool64, -hr, hr));
+            Kokkos::fence();
+            
+            // displace
+            P->R = P->R + P->P;
+
+
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
