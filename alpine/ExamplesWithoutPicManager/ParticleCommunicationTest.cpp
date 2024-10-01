@@ -170,7 +170,9 @@ int main(int argc, char* argv[]) {
 
         msg << "particles created and initial conditions assigned " << endl;
         
-        //P->initializeORB(FL, mesh);
+         
+        P->loadbalancefreq_m = std::atoi(argv[arg++]);
+        P->initializeORB(FL, mesh);
         bool fromAnalyticDensity = false;
 
         msg << "Starting iterations ..." << endl;
@@ -199,12 +201,12 @@ int main(int argc, char* argv[]) {
             //P->dumpParticleData();
             //ippl::Comm->barrier();
 
-            /*if (P->balance(totalP, it + 1)) {
+            if (P->balance(totalP, it + 1)) {
                 msg << "Starting repartition" << endl;
                 //IpplTimings::startTimer(domainDecomposition);
                 P->repartition(FL, mesh, fromAnalyticDensity);
                 //IpplTimings::stopTimer(domainDecomposition);
-            }*/
+            }
 
 
             P->scatterCIC(totalP, it + 1, hr);
