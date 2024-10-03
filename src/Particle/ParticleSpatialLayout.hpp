@@ -322,6 +322,7 @@ namespace ippl {
 
         /// Step 4 
         if (outsideCount > 0) {
+            std::cout<<"looking outisde"<<std::endl;
             static IpplTimings::TimerRef nonNeighboringParticles = IpplTimings::getTimer("nonNeighboringParticles");
             IpplTimings::startTimer(nonNeighboringParticles);
 

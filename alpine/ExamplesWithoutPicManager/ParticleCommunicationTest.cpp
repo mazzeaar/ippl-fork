@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
             
             // displace
             P->R = P->R + P->P;
-            P->dumpParticleData();
+            //P->dumpParticleData();
 
             IpplTimings::startTimer(updateTimer);
             P->update();
