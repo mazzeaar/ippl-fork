@@ -194,6 +194,15 @@ int main(int argc, char* argv[]) {
             P->R = P->R + P->P;
             //P->dumpParticleData();
 
+            // Each rank prints neigbours
+            //const auto neighbors = P->flayout_m.getNeighbors();
+            //for (const auto& componentNeighbors : neighbors) {
+            //    for (size_t j = 0; j < componentNeighbors.size(); ++j) {
+            //        std::cout << "Neighbor: " << componentNeighbors[j] << std::endl;
+            //    }
+            //}
+
+
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
