@@ -179,9 +179,9 @@ int main(int argc, char* argv[]) {
         for(unsigned int it=0; it<nt; it++){
             
             // resample the positions 
-            //Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
+            // Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
             //        P->R.getView(), rand_pool64, rmin, rmax));
-            //Kokkos::fence();
+            // Kokkos::fence();
             
             // sample displacement
             Kokkos::parallel_for(
@@ -192,22 +192,20 @@ int main(int argc, char* argv[]) {
             
             // displace
             P->R = P->R + P->P;
-
+            P->dumpParticleData();
 
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
 
-            //P->dumpParticleData();
-            //ippl::Comm->barrier();
-
+            // P->dumpParticleData();
+            // ippl::Comm->barrier();
             if (P->balance(totalP, it + 1)) {
                 msg << "Starting repartition" << endl;
                 //IpplTimings::startTimer(domainDecomposition);
                 P->repartition(FL, mesh, fromAnalyticDensity);
                 //IpplTimings::stopTimer(domainDecomposition);
             }
-
 
             P->scatterCIC(totalP, it + 1, hr);
             P->gatherCIC();
