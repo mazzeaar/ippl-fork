@@ -172,24 +172,21 @@ int main(int argc, char* argv[]) {
         
          
         P->loadbalancefreq_m = std::atoi(argv[arg++]);
-        P->initializeORB(FL, mesh);
-        bool fromAnalyticDensity = false;
+ //       P->initializeORB(FL, mesh);
+ //       bool fromAnalyticDensity = false;
 
         msg << "Starting iterations ..." << endl;
         for(unsigned int it=0; it<nt; it++){
-            
-            // resample the positions 
-            // Kokkos::parallel_for(P->getLocalNum(), generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
-            //        P->R.getView(), rand_pool64, rmin, rmax));
-            // Kokkos::fence();
-            
+           
+            msg << "Sampling Displacement" << endl;
             // sample displacement
             Kokkos::parallel_for(
                 P->getLocalNum(),
                 generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
                     P->P.getView(), rand_pool64, -hr, hr));
             Kokkos::fence();
-            
+           
+            msg << "Displacing" << endl; 
             // displace
             P->R = P->R + P->P;
             //P->dumpParticleData();
@@ -202,23 +199,22 @@ int main(int argc, char* argv[]) {
             //    }
             //}
 
-
+            msg << "Perfoming Update" << endl;
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
-
-            // P->dumpParticleData();
-            // ippl::Comm->barrier();
+/*
             if (P->balance(totalP, it + 1)) {
                 msg << "Starting repartition" << endl;
                 //IpplTimings::startTimer(domainDecomposition);
                 P->repartition(FL, mesh, fromAnalyticDensity);
                 //IpplTimings::stopTimer(domainDecomposition);
             }
-
+*/ 
+            msg << "Scattering" << endl;
             P->scatterCIC(totalP, it + 1, hr);
+            msg << "Gathering" << endl;
             P->gatherCIC();
-
             P->time_m += dt;
             msg << "Finished time step: " << it + 1 << " time: " << P->time_m << endl;
         }
