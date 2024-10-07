@@ -386,16 +386,12 @@ public:
     void gatherCIC() { gather(this->E, E_m, this->R); }
 
     void scatterCIC(size_type totalP, unsigned int iteration, Vector_t<double, Dim>& hrField) {
-        Inform m("scatter ");
-        m << "start" << endl; 
+        Inform m("scatter"); 
         rho_m = 0.0;
         scatter(q, rho_m, this->R);
-        m << "after scatter" << endl; 
         static IpplTimings::TimerRef sumTimer = IpplTimings::getTimer("Check");
         IpplTimings::startTimer(sumTimer);
-        m << "before .sum()" << endl;
         double Q_grid = rho_m.sum();
-        m << "after .sum()" << endl;
         size_type Total_particles = 0;
         size_type local_particles = this->getLocalNum();
 

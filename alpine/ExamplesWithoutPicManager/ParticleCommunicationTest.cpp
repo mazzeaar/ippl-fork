@@ -166,14 +166,11 @@ int main(int argc, char* argv[]) {
 
         P->update();
 
-        //P->dumpParticleData();
-
         msg << "particles created and initial conditions assigned " << endl;
-        
          
         P->loadbalancefreq_m = std::atoi(argv[arg++]);
- //       P->initializeORB(FL, mesh);
- //       bool fromAnalyticDensity = false;
+        P->initializeORB(FL, mesh);
+        bool fromAnalyticDensity = false;
 
         msg << "Starting iterations ..." << endl;
         for(unsigned int it=0; it<nt; it++){
@@ -186,37 +183,23 @@ int main(int argc, char* argv[]) {
                     P->P.getView(), rand_pool64, -hr, hr));
             Kokkos::fence();
            
-            msg << "Displacing" << endl; 
             // displace
             P->R = P->R + P->P;
-            //P->dumpParticleData();
 
-            // Each rank prints neigbours
-            //const auto neighbors = P->flayout_m.getNeighbors();
-            //for (const auto& componentNeighbors : neighbors) {
-            //    for (size_t j = 0; j < componentNeighbors.size(); ++j) {
-            //        std::cout << "Neighbor: " << componentNeighbors[j] << std::endl;
-            //    }
-            //}
-
-            msg << "Perfoming Update" << endl;
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
-/*
+
             if (P->balance(totalP, it + 1)) {
-                msg << "Starting repartition" << endl;
+                //msg << "Starting repartition" << endl;
                 //IpplTimings::startTimer(domainDecomposition);
-                P->repartition(FL, mesh, fromAnalyticDensity);
+                //P->repartition(FL, mesh, fromAnalyticDensity);
                 //IpplTimings::stopTimer(domainDecomposition);
             }
-*/ 
-            msg << "Scattering" << endl;
+ 
             P->scatterCIC(totalP, it + 1, hr);
-            msg << "Gathering" << endl;
             P->gatherCIC();
             P->time_m += dt;
-            msg << "Finished time step: " << it + 1 << " time: " << P->time_m << endl;
         }
        
         msg << "Particle Communication Test: End." << endl;
