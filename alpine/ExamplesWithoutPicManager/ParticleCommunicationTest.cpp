@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
             Kokkos::parallel_for(
                 P->getLocalNum(),
                 generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
-                    P->P.getView(), rand_pool64, -hr, hr));
+                    P->P.getView(), rand_pool64, -5*hr,5*hr));
             Kokkos::fence();
            
             // displace
