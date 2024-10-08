@@ -321,10 +321,10 @@ namespace ippl {
         outsideCount  = red_val.count[1];
 
         /// Step 4 
+        static IpplTimings::TimerRef nonNeighboringParticles = IpplTimings::getTimer("nonNeighboringParticles");
+        IpplTimings::startTimer(nonNeighboringParticles);
         if (outsideCount > 0) {
             std::cout<<"looking outisde"<<std::endl;
-            static IpplTimings::TimerRef nonNeighboringParticles = IpplTimings::getTimer("nonNeighboringParticles");
-            IpplTimings::startTimer(nonNeighboringParticles);
 
             Kokkos::parallel_for(
                 "ParticleSpatialLayout::leftParticles()",
@@ -339,9 +339,9 @@ namespace ippl {
                 });
             Kokkos::fence();
 
-            IpplTimings::stopTimer(nonNeighboringParticles);
         }
-
+        IpplTimings::stopTimer(nonNeighboringParticles);
+        
         return invalidCount;
     }
 
