@@ -128,6 +128,9 @@ public:
         Vector_t<double, Dim> rmax	= rmax_m;
         Vector_t<double, Dim> hr        = hr_m;
 
+        double particlechargeerror = std::fabs((Q-(*q).sum())/Q);
+        m << "particlechargeerror " << particlechargeerror << endl;
+
         scatter(*q, *rho, *R);
         double relError = std::fabs((Q-(*rho).sum())/Q);
 

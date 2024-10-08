@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
             Kokkos::parallel_for(
                 P->getLocalNum(),
                 generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
-                    P->P.getView(), rand_pool64, -5*hr,5*hr));
+                    P->P.getView(), rand_pool64, -10*hr,10*hr));
             Kokkos::fence();
            
             // displace
@@ -197,20 +197,19 @@ int main(int argc, char* argv[]) {
                 //IpplTimings::stopTimer(domainDecomposition);
             }
  
-            P->scatterCIC(totalP, it + 1, hr);
-            P->gatherCIC();
+            //P->scatterCIC(totalP, it + 1, hr);
+            //P->gatherCIC();
             P->time_m += dt;
         }
        
         msg << "Particle Communication Test: End." << endl;
+       
         IpplTimings::print();
         IpplTimings::print(std::string("timing.dat"));
         auto end = std::chrono::high_resolution_clock::now();
-
-        std::chrono::duration<double> time_chrono =
-            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-        std::cout << "Elapsed time: " << time_chrono.count() << std::endl;
-
+        
+        msg2all << " Before Finalize " << endl;
+        
     }
 
     ippl::finalize();

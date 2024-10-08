@@ -145,6 +145,9 @@ namespace ippl {
                                        args, val);
             });
         IpplTimings::stopTimer(scatterTimer);
+        
+        auto ghostfieldcharge = std::fabs((-1562.5-f.sum(1))/(-1562.5));
+        std::cout << "ghostfieldcharge" << ghostfieldcharge << std::endl;
 
         static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHalo");
         IpplTimings::startTimer(accumulateHaloTimer);

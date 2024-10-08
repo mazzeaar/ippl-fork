@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         Inform msg2all(TestName, INFORM_ALL_NODES);
 
         static IpplTimings::TimerRef mainTimer = IpplTimings::getTimer("total");
-        IpplTimings::startTimer(mainTimer);
+//        IpplTimings::startTimer(mainTimer);
 
         // Read input parameters, assign them to the corresponding memebers of manager
         int arg = 1;
@@ -72,15 +72,17 @@ int main(int argc, char* argv[]) {
 
         manager.setTime(0.0);
 
-        msg << "Starting iterations ..." << endl;
+        msg2all << "Starting iterations ..." << endl;
 
         manager.run(manager.getNt());
 
-        msg << "End." << endl;
+        msg2all << "End." << endl;
 
         IpplTimings::stopTimer(mainTimer);
         IpplTimings::print();
         IpplTimings::print(std::string("timing.dat"));
+
+        msg2all << "Before finalize" << endl;
     }
     ippl::finalize();
 
