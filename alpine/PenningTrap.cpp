@@ -72,17 +72,17 @@ int main(int argc, char* argv[]) {
 
         manager.setTime(0.0);
 
-        msg2all << "Starting iterations ..." << endl;
+        msg << "Starting iterations ..." << endl;
 
         manager.run(manager.getNt());
 
-        msg2all << "End." << endl;
+        msg << "End." << endl;
 
         IpplTimings::stopTimer(mainTimer);
         IpplTimings::print();
         IpplTimings::print(std::string("timing.dat"));
 
-        msg2all << "Before finalize" << endl;
+        msg << "Before finalize" << endl;
     }
     ippl::finalize();
 

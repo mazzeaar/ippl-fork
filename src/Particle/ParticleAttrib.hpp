@@ -145,9 +145,6 @@ namespace ippl {
                                        args, val);
             });
         IpplTimings::stopTimer(scatterTimer);
-        
-        auto ghostfieldcharge = std::fabs((-1562.5-f.sum(1))/(-1562.5));
-        std::cout << "ghostfieldcharge" << ghostfieldcharge << std::endl;
 
         static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHalo");
         IpplTimings::startTimer(accumulateHaloTimer);
@@ -218,22 +215,25 @@ namespace ippl {
         attrib.gather(f, pp);
     }
 
-#define DefineParticleReduction(fun, name, op, MPI_Op)            \
-    template <typename T, class... Properties>                    \
-    T ParticleAttrib<T, Properties...>::name() {                  \
-        T temp            = 0.0;                                  \
-        using policy_type = Kokkos::RangePolicy<execution_space>; \
-        Kokkos::parallel_reduce(                                  \
-            "fun", policy_type(0, *(this->localNum_mp)),          \
-            KOKKOS_CLASS_LAMBDA(const size_t i, T& valL) {        \
-                T myVal = dview_m(i);                             \
-                op;                                               \
-            },                                                    \
-            Kokkos::fun<T>(temp));                                \
-        T globaltemp = 0.0;                                       \
-        Comm->allreduce(temp, globaltemp, 1, MPI_Op<T>());        \
-        return globaltemp;                                        \
-    }
+#define DefineParticleReduction(fun, name, op, MPI_Op)                                    \
+    template <typename T, class... Properties>                                            \
+    T ParticleAttrib<T, Properties...>::name() {                                          \
+        T temp            = 0.0;                                                          \
+        using policy_type = Kokkos::RangePolicy<execution_space>;                         \
+        Kokkos::parallel_reduce(                                                          \
+            "fun", policy_type(0, *(this->localNum_mp)),                                  \
+            KOKKOS_CLASS_LAMBDA(const size_t i, T& valL) {                                \
+                T myVal = dview_m(i);                                                     \
+                op;                                                                       \
+            },                                                                            \
+            Kokkos::fun<T>(temp));                                                        \
+        T globaltemp = 0.0;                                                               \
+        int myrank;                                                                       \
+        MPI_Comm_rank(*Comm, &myrank);                                                    \ 
+        std::cout << "Rank " << myrank << " Local Particle Sum = " << temp << std::endl;  \
+        Comm->allreduce(temp, globaltemp, 1, MPI_Op<T>());                                \
+        return globaltemp;                                                                \
+    }                                                                                     
 
     DefineParticleReduction(Sum, sum, valL += myVal, std::plus)
     DefineParticleReduction(Max, max, if (myVal > valL) valL = myVal, std::greater)

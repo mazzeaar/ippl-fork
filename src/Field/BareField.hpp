@@ -206,6 +206,9 @@ namespace ippl {
             },                                                                                 \
             KokkosCorrection::fun<T>(temp));                                                   \
         T globaltemp = 0.0;                                                                    \
+        int myrank;                                                                            \
+        MPI_Comm_rank(layout_m->comm, &myrank);                                                \ 
+        std::cout << "Rank " << myrank << " Local Field Sum = " << temp << std::endl;          \
         layout_m->comm.allreduce(temp, globaltemp, 1, MPI_Op<T>());                            \
         return globaltemp;                                                                     \
     }
