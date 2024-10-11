@@ -36,7 +36,7 @@ namespace ippl {
         template <unsigned long ScatterPoint, unsigned long... Index, typename View, typename T,
                   typename IndexType>
         KOKKOS_INLINE_FUNCTION constexpr void scatterToPoint(
-            const std::index_sequence<Index...>&, const View& view,
+            const std::index_sequence<Index...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args, const T& val) {
             Kokkos::atomic_add(&view(interpolationIndex<ScatterPoint, Index>(args)...),
@@ -45,7 +45,7 @@ namespace ippl {
 
         template <unsigned long... ScatterPoint, typename View, typename T, typename IndexType>
         KOKKOS_INLINE_FUNCTION constexpr void scatterToField(
-            const std::index_sequence<ScatterPoint...>&, const View& view,
+            const std::index_sequence<ScatterPoint...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args, T val) {
             // The number of indices is equal to the view rank
@@ -57,7 +57,7 @@ namespace ippl {
         template <unsigned long GatherPoint, unsigned long... Index, typename View, typename T,
                   typename IndexType>
         KOKKOS_INLINE_FUNCTION constexpr typename View::value_type gatherFromPoint(
-            const std::index_sequence<Index...>&, const View& view,
+            const std::index_sequence<Index...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args) {
             return (interpolationWeight<GatherPoint, Index>(wlo, whi) * ...)
@@ -66,7 +66,7 @@ namespace ippl {
 
         template <unsigned long... GatherPoint, typename View, typename T, typename IndexType>
         KOKKOS_INLINE_FUNCTION constexpr typename View::value_type gatherFromField(
-            const std::index_sequence<GatherPoint...>&, const View& view,
+            const std::index_sequence<GatherPoint...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args) {
             // The number of indices is equal to the view rank

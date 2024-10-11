@@ -231,7 +231,7 @@ namespace ippl {
         int myrank;                                                                      \ 
         MPI_Comm_rank(*Comm, &myrank);                                                   \  
         std::cout << "Rank " << myrank << " Local Particle Sum = " << temp << std::endl; \ 
-        std::cout << "Rank " << myrank << " has = " << this->localNum_mp << std::endl;   \
+        std::cout << "Rank " << myrank << " has = " << *(this->localNum_mp) << std::endl;   \
         Comm->allreduce(temp, globaltemp, 1, MPI_Op<T>());                                \
         return globaltemp;                                                                \
     }                                                                                     

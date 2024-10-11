@@ -213,6 +213,7 @@ namespace ippl {
         return globaltemp;                                                                     \
     }
     
+    //ippl::parallel_reduce(                                                                 \
     //int myrank;                                                                            
     //MPI_Comm_rank(layout_m->comm, &myrank);                                                 
     //std::cout << "Rank " << myrank << " Local Field Sum = " << temp << std::endl;          

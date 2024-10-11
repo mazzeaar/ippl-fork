@@ -50,7 +50,7 @@ namespace ippl {
         template <unsigned long ScatterPoint, unsigned long... Index, typename View, typename T,
                   typename IndexType = size_t>
         KOKKOS_INLINE_FUNCTION constexpr void scatterToPoint(
-            const std::index_sequence<Index...>&, const View& view,
+            const std::index_sequence<Index...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args, const T& val);
 
@@ -77,7 +77,7 @@ namespace ippl {
         template <unsigned long... ScatterPoint, typename View, typename T,
                   typename IndexType = size_t>
         KOKKOS_INLINE_FUNCTION constexpr void scatterToField(
-            const std::index_sequence<ScatterPoint...>&, const View& view,
+            const std::index_sequence<ScatterPoint...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args, T val = 1);
 
@@ -97,7 +97,7 @@ namespace ippl {
         template <unsigned long GatherPoint, unsigned long... Index, typename View, typename T,
                   typename IndexType = size_t>
         KOKKOS_INLINE_FUNCTION constexpr typename View::value_type gatherFromPoint(
-            const std::index_sequence<Index...>&, const View& view,
+            const std::index_sequence<Index...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args);
 
@@ -116,7 +116,7 @@ namespace ippl {
         template <unsigned long... GatherPoint, typename View, typename T,
                   typename IndexType = size_t>
         KOKKOS_INLINE_FUNCTION constexpr typename View::value_type gatherFromField(
-            const std::index_sequence<GatherPoint...>&, const View& view,
+            const std::index_sequence<GatherPoint...>&, const View view,
             const Vector<T, View::rank>& wlo, const Vector<T, View::rank>& whi,
             const Vector<IndexType, View::rank>& args);
     }  // namespace detail
