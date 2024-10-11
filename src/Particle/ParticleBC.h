@@ -49,7 +49,7 @@ namespace ippl {
                 , maxval_m(nr[dim].max())
                 , isUpper_m(isUpper) {
                 extent_m = nr[dim].length();
-                middle_m = (minval_m + maxval_m) / 2;
+                middle_m = (minval_m + maxval_m) / 2.0;
             }
 
             KOKKOS_DEFAULTED_FUNCTION
@@ -72,7 +72,8 @@ namespace ippl {
 
             KOKKOS_INLINE_FUNCTION void operator()(const size_t& i) const {
                 value_type& value = this->view_m(i)[this->dim_m];
-                value             = value - extent_m * (int)((value - middle_m) * 2 / extent_m);
+                //value             = value - extent_m * (int)((value - middle_m) * 2.0 / extent_m);
+                value             = value - extent_m * Kokkos::round((value - middle_m) / extent_m);
             }
 
             KOKKOS_DEFAULTED_FUNCTION
