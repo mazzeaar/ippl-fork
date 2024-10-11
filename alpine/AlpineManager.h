@@ -128,13 +128,19 @@ public:
         Vector_t<double, Dim> rmax	= rmax_m;
         Vector_t<double, Dim> hr        = hr_m;
 
-        double particlechargeerror = std::fabs((Q-(*q).sum())/Q);
-        m << "particlechargeerror " << particlechargeerror << endl;
+        double particlecharge = (*q).sum();
+        m << "Particlecharge before scatter = " << particlecharge << endl;
 
+        //double fieldcharge = (*rho).sum(1);
+        //m << "Fieldcharge before scatter = " << fieldcharge << endl;
+        
         scatter(*q, *rho, *R);
-        double relError = std::fabs((Q-(*rho).sum())/Q);
-
-        m << relError << endl;
+       
+        //fieldcharge = (*rho).sum();
+        //m << "Fieldcharge after scatter = " << fieldcharge << endl;
+        
+        double relError = std::fabs((Q-((*rho).sum()))/Q);
+        m << "fieldchargeerror " << relError << endl;
 
         size_type TotalParticles = 0;
         size_type localParticles = this->pcontainer_m->getLocalNum();

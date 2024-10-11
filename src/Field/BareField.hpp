@@ -205,14 +205,18 @@ namespace ippl {
                 op;                                                                            \
             },                                                                                 \
             KokkosCorrection::fun<T>(temp));                                                   \
-        T globaltemp = 0.0;                                                                    \
-        int myrank;                                                                            \
-        MPI_Comm_rank(layout_m->comm, &myrank);                                                \ 
-        std::cout << "Rank " << myrank << " Local Field Sum = " << temp << std::endl;          \
-        layout_m->comm.allreduce(temp, globaltemp, 1, MPI_Op<T>());                            \
+        T globaltemp = 0.0;                                                         \ 
+        int myrank;                                                                           \ 
+        MPI_Comm_rank(layout_m->comm, &myrank);                                               \  
+        std::cout << "Rank " << myrank << " Local Field Sum = " << temp << std::endl;         \ 
+       layout_m->comm.allreduce(temp, globaltemp, 1, MPI_Op<T>());                            \
         return globaltemp;                                                                     \
     }
-
+    
+    //int myrank;                                                                            
+    //MPI_Comm_rank(layout_m->comm, &myrank);                                                 
+    //std::cout << "Rank " << myrank << " Local Field Sum = " << temp << std::endl;          
+ 
     DefineReduction(Sum, sum, valL += myVal, std::plus)
     DefineReduction(Max, max, using Kokkos::max; valL = max(valL, myVal), std::greater)
     DefineReduction(Min, min, using Kokkos::min; valL = min(valL, myVal), std::less)

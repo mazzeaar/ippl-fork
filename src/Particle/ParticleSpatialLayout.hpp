@@ -79,6 +79,10 @@ namespace ippl {
         IpplTimings::startTimer(ParticleBCTimer);
         this->applyBC(pc.R, rlayout_m.getDomain());
         IpplTimings::stopTimer(ParticleBCTimer);
+        
+        //auto pos_mirror =
+        //    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pc.R.getView());
+        //std::cout<<"Particle Position after BC = "<<pos_mirror(0)<<std::endl;
 
         static IpplTimings::TimerRef ParticleUpdateTimer = IpplTimings::getTimer("updateParticle");
         IpplTimings::startTimer(ParticleUpdateTimer);
@@ -150,7 +154,7 @@ namespace ippl {
             if (nSends[rank] > 0) {
                 hash_type hash("hash", nSends[rank]);
                 fillHash(rank, ranks, hash);
-
+                std::cout<<"Rank "<<Comm->rank()<<" sending to Rank "<<rank<<std::endl;
                 pc.sendToRank(rank, tag, sends++, requests, hash);
             }
         }
@@ -254,7 +258,7 @@ namespace ippl {
         for (const auto& componentNeighbors : neighbors) {
             for (size_t j = 0; j < componentNeighbors.size(); ++j) {
                 neighbors_mirror(k) = componentNeighbors[j];
-                //std::cout << "Neighbor: " << neighbors_mirror(k) << std::endl;
+                //std::cout<<"Rank "<<myRank<<" has Neighbor:"<<neighbors_mirror(k)<<std::endl;
                 k++;
             }
         }

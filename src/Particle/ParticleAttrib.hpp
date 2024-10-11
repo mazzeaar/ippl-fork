@@ -145,7 +145,7 @@ namespace ippl {
                                        args, val);
             });
         IpplTimings::stopTimer(scatterTimer);
-
+        auto temp = f.sum(1);
         static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHalo");
         IpplTimings::startTimer(accumulateHaloTimer);
         f.accumulateHalo();
@@ -228,12 +228,16 @@ namespace ippl {
             },                                                                            \
             Kokkos::fun<T>(temp));                                                        \
         T globaltemp = 0.0;                                                               \
-        int myrank;                                                                       \
-        MPI_Comm_rank(*Comm, &myrank);                                                    \ 
-        std::cout << "Rank " << myrank << " Local Particle Sum = " << temp << std::endl;  \
+        int myrank;                                                                      \ 
+        MPI_Comm_rank(*Comm, &myrank);                                                   \  
+        std::cout << "Rank " << myrank << " Local Particle Sum = " << temp << std::endl; \ 
+        std::cout << "Rank " << myrank << " has = " << this->localNum_mp << std::endl;   \
         Comm->allreduce(temp, globaltemp, 1, MPI_Op<T>());                                \
         return globaltemp;                                                                \
     }                                                                                     
+    //int myrank;                                                                       
+    //MPI_Comm_rank(*Comm, &myrank);                                                     
+    //std::cout << "Rank " << myrank << " Local Particle Sum = " << temp << std::endl;  
 
     DefineParticleReduction(Sum, sum, valL += myVal, std::plus)
     DefineParticleReduction(Max, max, if (myVal > valL) valL = myVal, std::greater)

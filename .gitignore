@@ -1,6 +1,7 @@
 build/
 build_gh/
 build_master/
+build_profiling/
 doc/html
 doc/latex
 manual/*.aux

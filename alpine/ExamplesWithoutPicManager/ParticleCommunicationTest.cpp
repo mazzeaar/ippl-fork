@@ -175,30 +175,37 @@ int main(int argc, char* argv[]) {
         msg << "Starting iterations ..." << endl;
         for(unsigned int it=0; it<nt; it++){
            
-            msg << "Sampling Displacement" << endl;
             // sample displacement
             Kokkos::parallel_for(
                 P->getLocalNum(),
                 generate_random<Vector_t<double, Dim>, Kokkos::Random_XorShift64_Pool<>, Dim>(
-                    P->P.getView(), rand_pool64, -10*hr,10*hr));
+                    P->P.getView(), rand_pool64, -4*hr,4*hr));
             Kokkos::fence();
            
             // displace
             P->R = P->R + P->P;
+           
+            typename ParticleAttrib<Vector_t<double, Dim>>::HostMirror R_host = P->R.getHostMirror();
+            Kokkos::deep_copy(R_host, P->R.getView());
+            
+            if(P->getLocalNum()>0){
+                std::cout<<"Particle Position = "<<R_host(0)<<endl;
+            }
+
 
             IpplTimings::startTimer(updateTimer);
             P->update();
             IpplTimings::stopTimer(updateTimer);
 
-            if (P->balance(totalP, it + 1)) {
+            /*if (P->balance(totalP, it + 1)) {
                 //msg << "Starting repartition" << endl;
                 //IpplTimings::startTimer(domainDecomposition);
                 //P->repartition(FL, mesh, fromAnalyticDensity);
                 //IpplTimings::stopTimer(domainDecomposition);
-            }
+            }*/
  
-            //P->scatterCIC(totalP, it + 1, hr);
-            //P->gatherCIC();
+            P->scatterCIC(totalP, it + 1, hr);
+            P->gatherCIC();
             P->time_m += dt;
         }
        
@@ -208,7 +215,7 @@ int main(int argc, char* argv[]) {
         IpplTimings::print(std::string("timing.dat"));
         auto end = std::chrono::high_resolution_clock::now();
         
-        msg2all << " Before Finalize " << endl;
+        //msg2all << " Before Finalize " << endl;
         
     }
 

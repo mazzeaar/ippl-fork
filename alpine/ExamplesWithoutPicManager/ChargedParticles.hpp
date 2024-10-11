@@ -398,9 +398,10 @@ public:
         ippl::Comm->reduce(local_particles, Total_particles, 1, std::plus<size_type>());
 
         double rel_error = std::fabs((Q_m - Q_grid) / Q_m);
+        m << "Total particle charge = " << Q_m << endl;
+        m << "Total grid charge = " << Q_grid << endl;
         m << "Rel. error in charge conservation = " << rel_error << endl;
-
-        if (ippl::Comm->rank() == 0) {
+       if (ippl::Comm->rank() == 0) {
             if (Total_particles != totalP || rel_error > 1e-10) {
                 m << "Time step: " << iteration << endl;
                 m << "Total particles in the sim. " << totalP << " "
