@@ -269,7 +269,7 @@ namespace refactor {
             });
             */
 
-            // replaces the stuff above, which makes no sense lol its probably wrong, but tests still pass
+            // replaces the stuff above, which makes no sense lol. its probably wrong, but tests still pass
             auto aidLocation = morton::get_morton_id_pairs(parent_node.data_vector, parent_node.boundingbox_m);
 
             vector_type<morton_code_type> NewNodes = {};
@@ -330,25 +330,51 @@ namespace refactor {
             }
         }
 
-        /*
-        we could maybe refactor the neighbor visiting functions using the stuff below, but there is some bug.
 
-        the functions can replace GetColleagues, but not GetPotentialColleagues, idk why
-        should work, as getpotential is basically a more broad version of getcolleagues...
-
-
+        /**
+         * @brief This function explores all neighbors. It does that by recursively calling itself, once for each dimension.
+         * This way it should compile such that we dont have loops and recursion, instead we just generate all possible neighbors
+         * and check their validity, after that we apply the processNeighbor function.
+         *
+         * This means:
+         * eplore_neighbors<0>(cur_grid, neighbor_grid) calls
+         * eplore_neighbors<1>(cur_grid, neighbor_grid) three times, each time with a variation of {-1,0,1} to the cur dimension
+         * ...
+         * eplore_neighbors<dim>(cur_grid, neighbor_grid) unfolds to:
+         * (assuming cur_grid = {0, 0, 0})
+         *
+         * if (is_valid(neighbor_grid={1, 0, 0}, min, max)) { // do stuff }
+         * if (is_valid(neighbor_grid={0, 1, 0}, min, max)) { // do stuff }
+         * if (is_valid(neighbor_grid={0, 0, 1}, min, max)) { // do stuff }
+         * if (is_valid(neighbor_grid={-1, 0, 0}, min, max)) { // do stuff }
+         * if (is_valid(neighbor_grid={0, -1, 0}, min, max)) { // do stuff }
+         * if (is_valid(neighbor_grid={0, 0, -1}, min, max)) { // do stuff }
+         * ...
+         * if (is_valid(neighbor_grid={1, 1, 1}, min, max)) { // do stuff }
+         *
+         * @tparam recursion_dim    recursion depth starts out at zero and increases up to dim
+         * @tparam Func             a function that takes a neighbor_key and proecesses it
+         * @param cur_grid          The curent position in the grid
+         * @param neighbor_grid
+         * @param processNeighbor
+         * @param cur_depth
+         * @param min_coord
+         * @param max_coord
+         */
         template <std::size_t recursion_dim, typename Func>
         constexpr void explore_neighbors(const grid_position_type& cur_grid, grid_position_type& neighbor_grid,
             Func&& processNeighbor, const depth_type cur_depth, const auto min_coord, const auto max_coord) const
         {
             if constexpr ( recursion_dim == dim ) {
                 // If all dimensions are processed, check validity and process
+                // after compiling this should be the remaining code
                 if ( is_valid_grid_coord<dim>(neighbor_grid, min_coord, max_coord) ) {
                     morton_code_type neighbor_key = morton::encode(neighbor_grid, root_bounds) + Kokkos::pow(1 << dim, cur_depth);
                     processNeighbor(neighbor_key);
                 }
             }
             else {
+                // recursively calls itself for the next dimension
                 for ( int diff : {-1, 0, 1} ) {
                     neighbor_grid[recursion_dim] = cur_grid[recursion_dim] + diff;
                     explore_neighbors<recursion_dim + 1>(cur_grid, neighbor_grid, std::forward<Func>(processNeighbor), cur_depth, min_coord, max_coord);
@@ -368,6 +394,12 @@ namespace refactor {
             grid_position_type neighbor_grid = cur_grid;
             explore_neighbors<0>(cur_grid, neighbor_grid, std::forward<Func>(processNeighbor), cur_depth, min_coord, max_coord);
         }
+
+        /*
+        we could maybe refactor the neighbor visiting functions using the stuff below, but there is some bug.
+
+        the functions can replace GetColleagues, but not GetPotentialColleagues, idk why
+        should work, as getpotential is basically a more broad version of getcolleagues...
 
         vector_type<morton_code_type> GetColleagues(morton_code_type key) const
         {
@@ -436,19 +468,17 @@ namespace refactor {
         {
             grid_position_type aidGrid = morton::decode(key);
             vector_type<morton_code_type> potentialColleagues;
+            const auto min_val = 0;
+            const auto max_val = std::pow(2, morton::get_depth(key));
 
             const auto diffs = { -1 ,0, 1 };
             for ( int z : diffs ) {
                 for ( int y : diffs ) {
                     for ( int x : diffs ) {
-
-                        grid_position_type newGrid = grid_position_type { aidGrid[0]+x, aidGrid[1]+y, aidGrid[2]+z };
-
-                        if ( not(newGrid[0]<0 || newGrid[0]>=std::pow(2, morton::get_depth(key)) || newGrid[1]<0 || newGrid[1]>=std::pow(2, morton::get_depth(key)) || newGrid[2]<0 || newGrid[2]>=std::pow(2, morton::get_depth(key))) ) {
-
+                        grid_position_type newGrid = grid_position_type { aidGrid[0] + x, aidGrid[1] + y, aidGrid[2] + z };
+                        if ( is_valid_grid_coord<dim>(newGrid, min_val, max_val) ) {
                             morton_code_type potentialColleague = morton::encode(newGrid, root_bounds) + Kokkos::pow(8, morton::get_depth(key));
                             potentialColleagues.push_back(potentialColleague);
-
                         }
                     }
                 }
