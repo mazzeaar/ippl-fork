@@ -18,7 +18,11 @@ int main(int argc, char* argv[]) {
         playout_type PLayout;
         ippl::OrthoTreeParticle particles(PLayout);
 
+<<<<<<< HEAD
         std::mt19937_64 eng;
+=======
+        std::mt19937_64 eng(42);
+>>>>>>> 28e0e755 (refactor of orthotree)
         std::uniform_real_distribution<double> unif(0.25, 0.5);
 
         unsigned int n=1000;
