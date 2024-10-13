@@ -28,10 +28,7 @@ add_subdirectory (region)
 add_subdirectory (random)
 add_subdirectory (serialization)
 add_subdirectory (orthotree)
-<<<<<<< HEAD
-=======
 add_subdirectory (orthotree_refactor)
->>>>>>> 28e0e755 (refactor of orthotree)
 
 # vi: set et ts=4 sw=4 sts=4:
 
