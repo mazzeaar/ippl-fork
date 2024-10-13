@@ -6,12 +6,12 @@
 #include "BoundingBox.h"
 
 namespace refactor {
-    template <dim_type dimension>
+    template <dim_type DIM>
     class OrthoTreeNode {
     public:
         // typedefs
-        using box_type = BoundingBox<dimension>;
-        using position_type = position_type_template<dimension>;
+        using box_type = BoundingBox<DIM>;
+        using position_type = position_type_template<DIM>;
 
     public:
         vector_type<morton_code_type> children_vector;

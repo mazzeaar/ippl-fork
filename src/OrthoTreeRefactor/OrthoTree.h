@@ -27,17 +27,17 @@
 
 namespace refactor {
 
-    template <dim_type dim, depth_type max_depth>
+    template <dim_type DIM, depth_type MAX_DEPTH>
     class OrthoTree {
     public:
         // typedefs
-        using particle_type = particle_type_template<dim>;
-        using position_type = position_type_template<dim>;
-        using box_type = BoundingBox<dim>;
-        using grid_position_type = grid_position_type_template<dim>;
+        using particle_type = particle_type_template<DIM>;
+        using position_type = position_type_template<DIM>;
+        using box_type = BoundingBox<DIM>;
+        using grid_position_type = grid_position_type_template<DIM>;
 
-        using node_type = OrthoTreeNode<dim>;
-        using morton = MortonHelper<dim, max_depth>;
+        using node_type = OrthoTreeNode<DIM>;
+        using morton = MortonHelper<DIM, MAX_DEPTH>;
         using container_type = unordered_map_type<morton_code_type, node_type>;
 
     public: // public because of refactor tests
@@ -47,20 +47,20 @@ namespace refactor {
         container_type                  nodes_m;        // Kokkos::UnorderedMap of {morton_node_id, Node} pairs
         box_type                        root_bounds;          // Bounding Box of the Tree = Root node's box
         size_t                          maxelements_m;  // Max points per node
-        grid_id_type                    rasterresmax_m; // Max boxes per dim
-        position_type                   rasterizer_m;   // Describes how many nodes make up 1 unit of length per dim
+        grid_id_type                    rasterresmax_m; // Max boxes per DIM
+        position_type                   rasterizer_m;   // Describes how many nodes make up 1 unit of length per DIM
         particle_id_type                sourceidx_m;
 
     public:
         // needs more constructors
         OrthoTree(particle_type const& particles, particle_id_type sourceidx, size_t MaxElements, box_type Box)
             : root_bounds(Box), maxelements_m(MaxElements),
-            rasterresmax_m(Kokkos::exp2(max_depth)),
+            rasterresmax_m(Kokkos::exp2(MAX_DEPTH)),
             rasterizer_m(Box.get_rasteriser(rasterresmax_m)),
             sourceidx_m(sourceidx)
         {
             const size_t n = particles.getTotalNum(); // use getGlobalNum() instead? 
-            nodes_m = container_type(EstimateNodeNumber(n, max_depth, MaxElements));
+            nodes_m = container_type(EstimateNodeNumber(n, MAX_DEPTH, MaxElements));
 
             // create and insert root
             nodes_m.insert(ROOT_KEY, node_type(Box));
@@ -76,15 +76,15 @@ namespace refactor {
             });
 
             auto itBegin = aidLocations.begin();
-            addNodes(nodes_m.value_at(nodes_m.find(ROOT_KEY)), ROOT_KEY, itBegin, aidLocations.end(), morton_code_type { 0 }, max_depth);
+            addNodes(nodes_m.value_at(nodes_m.find(ROOT_KEY)), ROOT_KEY, itBegin, aidLocations.end(), morton_code_type { 0 }, MAX_DEPTH);
 
             BalanceTree(positions);
         }
 
         void BalanceTree(vector_type<position_type> positions)
         {
-            std::queue<morton_code_type>         unprocessedNodes = {};
-            vector_type<morton_code_type>     leafNodes = collect_leaf_nodes();
+            std::queue<morton_code_type> unprocessedNodes = {};
+            vector_type<morton_code_type> leafNodes = collect_leaf_nodes();
 
             std::sort(leafNodes.begin(), leafNodes.end(), std::greater<>());
             for ( unsigned int i = 0; i < leafNodes.size(); ++i ) {
@@ -158,9 +158,9 @@ namespace refactor {
 
             --remaining_depth;
 
-            auto const shift = remaining_depth * dim;
+            auto const shift = remaining_depth * DIM;
             auto const nLocationStep = morton_code_type { 1 } << shift;
-            auto const flagParent = parent_key << dim;
+            auto const flagParent = parent_key << DIM;
 
             while ( itEndPrev != itEnd ) {
                 auto const idChildActual = morton_code_type((itEndPrev->second - idLocationBegin) >> shift);
@@ -192,10 +192,10 @@ namespace refactor {
             node_type& nodeChild = nodes_m.value_at(nodes_m.find(child_key));
 
             const auto current_depth = morton::get_depth(child_key);
-            const double scale_factor = get_max_nodes_per_edge(max_depth - current_depth);
+            const double scale_factor = get_max_nodes_per_edge(MAX_DEPTH - current_depth);
             grid_position_type decoded_coordinates = morton::decode(child_key);
 
-            for ( dim_type i = 0; i < dim; ++i ) {
+            for ( dim_type i = 0; i < DIM; ++i ) {
                 const double cur_rasterizer = rasterizer_m[i] * scale_factor;
                 nodeChild.boundingbox_m.Min[i] = static_cast<float_t>(decoded_coordinates[i]) * cur_rasterizer;
                 nodeChild.boundingbox_m.Max[i] = nodeChild.boundingbox_m.Min[i] + cur_rasterizer;
@@ -222,18 +222,18 @@ namespace refactor {
             const double rMult = 3.; // why is this 3??
 
             // for smaller problem size
-            if ( (MaxDepth + 1) * dim < 64 ) {
-                size_t nMaxChild = size_t { 1 } << (MaxDepth * dim);
+            if ( (MaxDepth + 1) * DIM < 64 ) {
+                size_t nMaxChild = size_t { 1 } << (MaxDepth * DIM);
                 auto const nElementsInNode = nParticles / nMaxChild;
                 if ( nElementsInNode > nMaxElements / 2 ) return nMaxChild;
             }
 
             // for larger problem size
             auto const nElementInNodeAvg = static_cast<float>(nParticles) / static_cast<float>(nMaxElements);
-            auto const nDepthEstimated = std::min(MaxDepth, static_cast<depth_type>(std::ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(dim))));
+            auto const nDepthEstimated = std::min(MaxDepth, static_cast<depth_type>(std::ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(DIM))));
 
-            if ( nDepthEstimated * dim < 64 ) {
-                return static_cast<size_t>(rMult * (1 << nDepthEstimated * dim));
+            if ( nDepthEstimated * DIM < 64 ) {
+                return static_cast<size_t>(rMult * (1 << nDepthEstimated * DIM));
             }
             else {
                 return static_cast<size_t>(rMult * nElementInNodeAvg);
@@ -252,13 +252,13 @@ namespace refactor {
          */
         vector_type<morton_code_type> RefineNode(node_type& parent_node, morton_code_type parent_key, vector_type<position_type> positions)
         {
-            const morton_code_type FlagParent = parent_key << dim;
+            const morton_code_type FlagParent = parent_key << DIM;
             const position_type ParentBoxOrigin = parent_node.boundingbox_m.Min;
 
             /*
             const depth_type child_depth = morton::get_depth(parent_key) + 1;
-            const morton_code_type shift = remaining_depth * dim;
-            const depth_type remaining_depth = max_depth - child_depth;
+            const morton_code_type shift = remaining_depth * DIM;
+            const depth_type remaining_depth = MAX_DEPTH - child_depth;
 
             vector_type<morton_id_pair_type> aidLocation(parent_node.data_vector.size());
             std::transform(parent_node.data_vector.begin(), parent_node.data_vector.end(), aidLocation.begin(),
@@ -274,7 +274,7 @@ namespace refactor {
 
             vector_type<morton_code_type> NewNodes = {};
             parent_node.data_vector = {};
-            for ( unsigned int childId = 0; childId < Kokkos::pow(2, dim); ++childId ) {
+            for ( unsigned int childId = 0; childId < Kokkos::pow(2, DIM); ++childId ) {
                 morton_code_type const child_key = FlagParent | childId;
                 if ( nodes_m.exists(child_key) ) {
                     continue;
@@ -340,7 +340,7 @@ namespace refactor {
          * eplore_neighbors<0>(cur_grid, neighbor_grid) calls
          * eplore_neighbors<1>(cur_grid, neighbor_grid) three times, each time with a variation of {-1,0,1} to the cur dimension
          * ...
-         * eplore_neighbors<dim>(cur_grid, neighbor_grid) unfolds to:
+         * eplore_neighbors<DIM>(cur_grid, neighbor_grid) unfolds to:
          * (assuming cur_grid = {0, 0, 0})
          *
          * if (is_valid(neighbor_grid={1, 0, 0}, min, max)) { // do stuff }
@@ -352,7 +352,7 @@ namespace refactor {
          * ...
          * if (is_valid(neighbor_grid={1, 1, 1}, min, max)) { // do stuff }
          *
-         * @tparam recursion_dim    recursion depth starts out at zero and increases up to dim
+         * @tparam recursion_dim    recursion depth starts out at zero and increases up to DIM
          * @tparam Func             a function that takes a neighbor_key and proecesses it
          * @param cur_grid          The curent position in the grid
          * @param neighbor_grid
@@ -365,11 +365,11 @@ namespace refactor {
         constexpr void explore_neighbors(const grid_position_type& cur_grid, grid_position_type& neighbor_grid,
             Func&& processNeighbor, const depth_type cur_depth, const auto min_coord, const auto max_coord) const
         {
-            if constexpr ( recursion_dim == dim ) {
+            if constexpr ( recursion_dim == DIM ) {
                 // If all dimensions are processed, check validity and process
                 // after compiling this should be the remaining code
-                if ( is_valid_grid_coord<dim>(neighbor_grid, min_coord, max_coord) ) {
-                    morton_code_type neighbor_key = morton::encode(neighbor_grid, root_bounds) + Kokkos::pow(1 << dim, cur_depth);
+                if ( is_valid_grid_coord<DIM>(neighbor_grid, min_coord, max_coord) ) {
+                    morton_code_type neighbor_key = morton::encode(neighbor_grid, root_bounds) + Kokkos::pow(1 << DIM, cur_depth);
                     processNeighbor(neighbor_key);
                 }
             }
@@ -404,7 +404,7 @@ namespace refactor {
         vector_type<morton_code_type> GetColleagues(morton_code_type key) const
         {
             vector_type<morton_code_type> colleagues;
-            std::size_t num_neighbors = Kokkos::pow(dim, dim);
+            std::size_t num_neighbors = Kokkos::pow(DIM, DIM);
             colleagues.reserve(num_neighbors);
 
             if ( key == ROOT_KEY ) {
@@ -432,7 +432,7 @@ namespace refactor {
         vector_type<morton_code_type> GetColleagues(morton_code_type key) const
         {
             vector_type<morton_code_type> colleagues = {};
-            colleagues.reserve(Kokkos::pow(dim, dim));
+            colleagues.reserve(Kokkos::pow(DIM, DIM));
 
             if ( key == ROOT_KEY ) {
                 colleagues.push_back(1);
@@ -476,7 +476,7 @@ namespace refactor {
                 for ( int y : diffs ) {
                     for ( int x : diffs ) {
                         grid_position_type newGrid = grid_position_type { aidGrid[0] + x, aidGrid[1] + y, aidGrid[2] + z };
-                        if ( is_valid_grid_coord<dim>(newGrid, min_val, max_val) ) {
+                        if ( is_valid_grid_coord<DIM>(newGrid, min_val, max_val) ) {
                             morton_code_type potentialColleague = morton::encode(newGrid, root_bounds) + Kokkos::pow(8, morton::get_depth(key));
                             potentialColleagues.push_back(potentialColleague);
                         }

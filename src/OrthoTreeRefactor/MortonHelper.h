@@ -11,18 +11,18 @@ namespace refactor {
      * Its fully static as of now and accepts dimension and max depth as templates (used to validate encodings)
      * I think this could still be done cleaner, but its ok for now.
      *
-     * @tparam dim
-     * @tparam max_depth
+     * @tparam DIM
+     * @tparam MAX_DEPTH
      */
-    template <dim_type dim, depth_type max_depth>
+    template <dim_type DIM, depth_type MAX_DEPTH>
     struct MortonHelper {
         // typedefs
-        using position_type = position_type_template<dim>;
-        using grid_position_type = grid_position_type_template<dim>;
-        using particle_type = particle_type_template<dim>;
-        using box_type = BoundingBox<dim>;
+        using position_type = position_type_template<DIM>;
+        using grid_position_type = grid_position_type_template<DIM>;
+        using particle_type = particle_type_template<DIM>;
+        using box_type = BoundingBox<DIM>;
 
-        static constexpr size_t max_nodes_per_edge = get_max_nodes_per_edge(max_depth);
+        static constexpr size_t max_nodes_per_edge = get_max_nodes_per_edge(MAX_DEPTH);
 
         /**
          * @brief encodes a given coordinate or particle to its morton code.
@@ -39,12 +39,12 @@ namespace refactor {
 
             if constexpr ( std::is_same_v<T, position_type> ) {
                 grid_position_type rasterised_coordinate = fit_to_grid(coordinate, root_bounds);
-                for ( size_t i = 0; i < dim; ++i ) {
+                for ( size_t i = 0; i < DIM; ++i ) {
                     code += (spread_coords(rasterised_coordinate[i]) << i);
                 }
             }
             else if constexpr ( std::is_same_v<T, grid_position_type> ) {
-                for ( size_t i = 0; i < dim; ++i ) {
+                for ( size_t i = 0; i < DIM; ++i ) {
                     code += (spread_coords(coordinate[i]) << i);
                 }
             }
@@ -96,7 +96,7 @@ namespace refactor {
         static constexpr grid_position_type fit_to_grid(const position_type& coordinate, const box_type& root_bounds)
         {
             grid_position_type normalised;
-            for ( size_t i = 0; i < dim; ++i ) {
+            for ( size_t i = 0; i < DIM; ++i ) {
                 const auto bounds_size = root_bounds.Max[i] - root_bounds.Min[i];
                 const auto normalised_coordinate = (coordinate[i] - root_bounds.Min[i]) / bounds_size;
 
@@ -120,7 +120,7 @@ namespace refactor {
             depth_type bitShift = 0;
 
             for ( depth_type depth = 0; depth < current_depth; ++depth ) {
-                for ( dim_type dimension = 0; dimension < dim; ++dimension ) {
+                for ( dim_type dimension = 0; dimension < DIM; ++dimension ) {
                     grid_pos[dimension] |= (morton_code & bitMask) >> (bitShift - depth);
                     bitMask <<= 1;
                     ++bitShift;
@@ -146,7 +146,7 @@ namespace refactor {
                     return depth;
                 }
 
-                key >>= dim;
+                key >>= DIM;
                 ++depth;
             }
 
@@ -164,15 +164,15 @@ namespace refactor {
         {
             // idk if this makes sense??
             assert(key != 1 && "key cant be the root node!");
-            return key >> dim;
+            return key >> DIM;
         }
 
     private:
 
         /**
          * @brief This function spreads the bits based on morton encoding.
-         * Meaning the bits from the coord get spread by 'dim' amount.
-         * So 0b100111 becomes 0b100 000 000 100 100 1 (for dim=3)
+         * Meaning the bits from the coord get spread by 'DIM' amount.
+         * So 0b100111 becomes 0b100 000 000 100 100 1 (for DIM=3)
          *
          * @param coord
          * @return constexpr morton_code_type
@@ -182,12 +182,12 @@ namespace refactor {
             // this will not compile if we try to generate invalid codes, should help providing nasty bugs for large depths
             // morton_code_type could maybe be uint128 in that case, idk if thats reasonable?
             constexpr auto bitsInType = sizeof(morton_code_type) * 8;
-            static_assert(max_depth * dim <= bitsInType, "Morton code type is too small to hold the spread bits.");
+            static_assert(MAX_DEPTH * DIM <= bitsInType, "Morton code type is too small to hold the spread bits.");
 
             morton_code_type res = 0;
-            for ( size_t i = 0; i < max_depth; ++i ) {
+            for ( size_t i = 0; i < MAX_DEPTH; ++i ) {
                 const auto current_byte = (coord >> i) & 1ULL;
-                const auto shift = (i * dim);
+                const auto shift = (i * DIM);
                 res |= (current_byte << shift);
             }
 

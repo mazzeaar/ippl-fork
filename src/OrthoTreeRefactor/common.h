@@ -46,32 +46,27 @@ namespace refactor {
     using morton_id_pair_type = pair_type<particle_id_type, morton_code_type>;
 
     // template type aliases
-    template <dim_type dim> using particle_type_template = ippl::OrthoTreeParticle<ippl::ParticleSpatialLayout<float_type, dim>>;
-    template <dim_type dim> using position_type_template = ippl::Vector<float_t, dim>;
-    template <dim_type dim> using grid_position_type_template = ippl::Vector<grid_id_type, dim>;
+    template <dim_type DIM> using particle_type_template = ippl::OrthoTreeParticle<ippl::ParticleSpatialLayout<float_type, DIM>>;
+    template <dim_type DIM> using position_type_template = ippl::Vector<float_t, DIM>;
+    template <dim_type DIM> using grid_position_type_template = ippl::Vector<grid_id_type, DIM>;
 
     // forward declarations
-    template <dim_type dim> struct BoundingBox;
-    template <dim_type dim> class OrthoTreeNode;
-    template <dim_type dim, depth_type max_depth> struct MortonHelper;
-    template <dim_type dim, depth_type max_depth> class OrthoTree;
+    template <dim_type DIM> struct BoundingBox;
+    template <dim_type DIM> class OrthoTreeNode;
+    template <dim_type DIM, depth_type max_depth> struct MortonHelper;
+    template <dim_type DIM, depth_type max_depth> class OrthoTree;
 
     // constexpr helpers
-
     static constexpr size_t get_max_nodes_per_edge(dim_type max_depth) { return (1 << (max_depth)); }
 
     /**
      * @brief Checks if a grid position is valid for the given range
-     *
-     * @tparam dim
-     * @param pos
-     * @param min
-     * @param max
+     * @tparam DIM how many dimensions do we have
      */
-    template <dim_type dim>
-    static constexpr bool is_valid_grid_coord(const grid_position_type_template<dim>& pos, grid_id_type min, grid_id_type max)
+    template <dim_type DIM>
+    static constexpr bool is_valid_grid_coord(const grid_position_type_template<DIM>& pos, grid_id_type min, grid_id_type max)
     {
-        for ( dim_type i = 0; i < dim; ++i ) {
+        for ( dim_type i = 0; i < DIM; ++i ) {
             if ( pos[i] < min || pos[i] >= max ) return false;
         }
         return true;
