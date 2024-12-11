@@ -244,4 +244,10 @@ namespace ippl {
         return res;
     }
 
+    template <size_t Dim>
+    inline bool Morton<Dim>::is_sibling(morton_code a, morton_code b) const {
+        // i think its faster if we leave this out (no branching)
+        // if (get_depth(a) != get_depth(b)) return false;
+        return get_parent(a) == get_parent(b);
+    }
 } // namespace ippl
