@@ -12,13 +12,25 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo10(
         morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L) {
+        const size_t depth_N = morton_helper.get_depth(octant_N);
         std::vector<morton_code> W;
         std::vector<morton_code> R;
 
-        // this is a set because we have to remove duplicates from it
+        // this is a set because we need unique morton codes
         std::unordered_set<morton_code> P;
 
-        for (size_t depth = max_depth_m; depth <= morton_helper.get_depth(octant_N); ++depth) {
+        /**
+         * Key idea here: we only resize W when we actually need to. To achieve this we store
+         * multiple different sizes of W. this way we dont have to resize (expensive) and we can
+         * keep using our allocated memory for as long as possible. We achieve this by swapping
+         * unused values we would otherwise remove from W to the (dynamic) back of it, indicated by
+         * W_dymanic_size. We mainly use std::vector<> in this loop, because we can easily resize
+         * them and std::vector<>::clear() does not deallocate the memory, meaning we (probably)
+         * rarely have to resize the vector.
+         */
+        size_t W_actual_size  = W.size();
+        size_t W_dynamic_size = W_actual_size;
+        for (size_t depth = max_depth_m; depth <= depth_N; ++depth) {
             // Q = all octants in W at depth depth
             std::vector<morton_code> Q;
             std::for_each(W.data(), W.data() + W.size(),
@@ -60,8 +72,8 @@ namespace ippl {
 
             // basically: we decrease the size of W, then we only have to increase it by the surplus
             // added by P (if P is larger than W)
-            const size_t W_old_size = W.size();
-            size_t W_cur_size       = W.size();
+            const size_t W_old_size = W_dynamic_size;
+            size_t W_cur_size       = W_old_size;
             for (size_t i = 0; i < W_cur_size;) {
                 const size_t test_depth = morton_helper.get_depth(W[i]);
                 if (test_depth == depth - 1) {
@@ -72,8 +84,16 @@ namespace ippl {
                 }
             }
 
-            // resize W
-            size_t W_new_size = W.append_range(P);
+            W_dynamic_size += (P.size() - (W_old_size - W_cur_size));
+            if (W_dynamic_size > W_actual_size) {
+                // resize W
+            }
+
+            for (auto P_it = P.begin(); P_it != P.end(); ++P_it, ++W_cur_size) {
+                const morton_code P_oct = *P_it;
+                W[W_cur_size]           = P_oct;
+            }
+
             P.clear();
         }
 
