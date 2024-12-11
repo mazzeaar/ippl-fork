@@ -205,11 +205,15 @@ namespace ippl {
          */
         inline morton_code get_step_size(morton_code code) const;
 
-        inline bool is_sibling(morton_code a, morton_code b) const {
-            // i think its faster if we leave this out (no branching)
-            // if (get_depth(a) != get_depth(b)) return false;
-            return get_parent(a) == get_parent(b);
-        }
+        /**
+         * @brief
+         *
+         * @param a
+         * @param b
+         * @return true
+         * @return false
+         */
+        inline bool is_sibling(morton_code a, morton_code b) const;
 
     private:
         const size_t max_depth;
