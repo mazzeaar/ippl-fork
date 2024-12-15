@@ -249,6 +249,12 @@ namespace ippl {
          */
         inline int get_child_index(morton_code parent, morton_code child) const;
 
+        /**
+         * @brief finds the morton codes at lowest level that will allow us to 
+         * find neighbors of the given code 
+         */
+        inline vector_t<morton_code> get_search_keys(morton_code code) const;
+
 
     private:
         const size_t max_depth;

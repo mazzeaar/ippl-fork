@@ -240,3 +240,27 @@ TEST(MortonCodesTest, GetChildIndexTest) {
   EXPECT_EQ(index4, expected4);
 }
 
+TEST(MortonCodesTest, GetSearchKeysTest) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code code = morton.encode({ 8, 8, 8 }, 2);
+  vector_t<morton_code> keys = morton.get_search_keys(code);
+  vector_t<morton_code> expected(7);
+
+  expected[0] = morton.encode({ 16, 16, 16 }, 5);
+  expected[1] = morton.encode({ 16, 16, 15 }, 5);
+  expected[2] = morton.encode({ 16, 15, 16 }, 5);
+  expected[3] = morton.encode({ 16, 15, 15 }, 5);
+  expected[4] = morton.encode({ 15, 16, 16 }, 5);
+  expected[5] = morton.encode({ 15, 16, 15 }, 5);
+  expected[6] = morton.encode({ 15, 15, 16 }, 5);
+
+
+  std::sort(expected.begin(), expected.end());
+  std::sort(keys.begin(), keys.end());
+
+  EXPECT_EQ(keys, expected);
+}
+

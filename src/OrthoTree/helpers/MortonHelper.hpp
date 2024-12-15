@@ -180,7 +180,7 @@ namespace ippl {
     template<size_t Dim>
     inline morton_code Morton<Dim>::get_nth_descendant(morton_code code, const size_t level, size_t n) const
     {
-        assert(level > get_depth(code) && "can't get descendants at a coarser level than the current node!");
+        assert(level >= get_depth(code) && "can't get descendants at a coarser level than the current node!");
         assert(level <= max_depth && "can't get descendants at a level larger than max_depth");
         assert(n < n_children && "can't get descendant with index larger than n_children");
         const morton_code first_descendant = get_first_descendant(code, level);
@@ -270,4 +270,39 @@ namespace ippl {
         const morton_code step = get_step_size(child);
         return (child - get_first_child(parent)) / step;
     }
+
+    template <size_t Dim>
+    inline vector_t<morton_code> Morton<Dim>::get_search_keys(morton_code code) const {
+        vector_t<morton_code> keys;
+        keys.reserve(n_children - 1);
+
+        int index = get_child_index(get_parent(code), code);
+        assert(index != -1 && "code is not a child of its parent");
+
+        morton_code corner_leaf = get_nth_descendant(code, max_depth, index);
+
+        grid_coordinate corner_leaf_coords = decode(corner_leaf);
+        grid_coordinate anchor_coords = corner_leaf_coords;
+        for (size_t i = 0; i < Dim; ++i) {
+            
+            int increment = !!(index & (1 << i));
+            anchor_coords[i] += increment;
+        }
+
+        grid_coordinate offset();
+        for (size_t i = 0; i < n_children; ++i) {
+            
+            if (i == index) continue;
+
+            for (size_t j = 0; j < Dim; ++j) {
+                offset[j] = (i / (1 << j)) % 2;
+            }
+            const grid_coordinate current_coords = anchor_coords + offset;
+
+            keys.push_back(encode(current_coords, max_depth));
+        }
+
+        return keys;
+    }
+
 } // namespace ippl
