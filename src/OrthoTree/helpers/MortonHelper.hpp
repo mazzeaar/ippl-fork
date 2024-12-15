@@ -174,7 +174,7 @@ namespace ippl {
 
         // the last descendant is num_descendants - 1 morton code steps
         // away from the first descendant
-        return get_nth_descendant(code, level, n_children - 1);
+        return first_descendant + step * (num_descendants - 1);
     }
 
     template<size_t Dim>
@@ -261,5 +261,13 @@ namespace ippl {
         assert(n < n_children && "can't get child with index larger than n_children");
         assert(get_depth(code) < max_depth && "can't get children at the deepest level");
         return get_first_child(code) + n * get_step_size(get_first_child(code));
+    }
+
+    template <size_t Dim>
+    inline int Morton<Dim>::get_child_index(morton_code parent, morton_code child) const {
+        if (get_parent(child) != parent) return -1;
+
+        const morton_code step = get_step_size(child);
+        return (child - get_first_child(parent)) / step;
     }
 } // namespace ippl

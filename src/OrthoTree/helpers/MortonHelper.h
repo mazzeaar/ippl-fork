@@ -239,6 +239,16 @@ namespace ippl {
          */
         inline morton_code get_nth_child(morton_code code, size_t n) const;
 
+        /**
+         * @brief Returns which child the child code is of the parent code 
+         * if the parent code isn't the parent this returns -1
+         *
+         * @param parent
+         * @param child
+         * @return int
+         */
+        inline int get_child_index(morton_code parent, morton_code child) const;
+
 
     private:
         const size_t max_depth;
