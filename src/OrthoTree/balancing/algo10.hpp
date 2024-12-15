@@ -1,3 +1,5 @@
+#include <unordered_set>
+
 #include "../OrthoTree.h"
 
 namespace ippl {
@@ -13,8 +15,10 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo10(
         const morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L) {
         const size_t depth_N = morton_helper.get_depth(octant_N);
+
         Kokkos::View<morton_code*> W(partial_descendants_L.data(), partial_descendants_L.size());
-        Kokkos::View<morton_code*> R;
+        Kokkos::View<morton_code*> R("R_View", 1000);  // random min size (too large)
+        size_t R_index = 0;
 
         // this is a set because we need unique morton codes
         std::unordered_set<morton_code> P;
@@ -33,22 +37,22 @@ namespace ippl {
         for (size_t depth = max_depth_m; depth <= depth_N + 1; ++depth) {
             // Q = all octants in W at depth depth
             std::vector<morton_code> Q;
-            std::for_each(W.data(), W.data() + W.size(),
-                          [morton_helper, depth, &Q](const morton_code& oct) {
-                              if (morton_helper.get_depth(oct) == depth) {
-                                  Q.push_back(oct);
-                              }
-                              morton_helper.get_parent(oct);
-                          });
+            std::for_each(W.data(), W.data() + W.size(), [this, depth, &Q](const morton_code& oct) {
+                if (morton_helper.get_depth(oct) == depth) {
+                    Q.push_back(oct);
+                }
+                morton_helper.get_parent(oct);
+            });
 
+            // T.size() <= Q.size()
             // T = all octants in Q s.t. a sibling of Q is not yet contained in T
             std::vector<morton_code> T;
             std::for_each(Q.data(), Q.data() + Q.size(),
-                          [morton_helper, &T](const morton_code& oct) {
+                          [this, &T](const morton_code& oct) {
                               // naive implementation, can be done smarter later
                               const bool contains_sibling =
                                   std::any_of(T.data(), T.data() + T.size(),
-                                              [morton_helper, oct](const morton_code& T_oct) {
+                                              [this, oct](const morton_code& T_oct) {
                                                   return morton_helper.is_sibling(oct, T_oct);
                                               });
 
@@ -60,12 +64,24 @@ namespace ippl {
             const size_t T_size = T.size();
             for (size_t i = 0; i < T_size; ++i) {
                 const morton_code octant_t = T[i];
-                R.append_range(morton_helper.get_siblings(octant_t));
 
-                // potential issue: is the parent included in here or not?
+                for (const auto& sibling : morton_helper.get_siblings(octant_t)) {
+                    if (R_index == R.size()) {
+                        Kokkos::resize(R, 2 * R_index);
+                    }
+                    R[R_index++] = sibling;
+                }
+
+                const auto parent_t = morton_helper.get_parent(octant_t);
+                // potential issue: should the parent be included in here or not?
+                const auto avunculi = morton_helper.get_siblings(parent_t);
                 // fun fact: this is the collective noun for aunts and uncles:)
-                const auto avunculi = morton_helper.get_siblings(morton_helper.get_parent(t));
                 for (auto titi : avunculi) {
+                    if (parent_t == titi) {
+                        // dont include parent itself
+                        continue;
+                    }
+
                     P.insert(titi);
                 }
             }
@@ -87,18 +103,26 @@ namespace ippl {
             W_dynamic_size += (P.size() - (W_old_size - W_cur_size));
             if (W_dynamic_size > W_actual_size) {
                 // resize W
+                W_actual_size = 2 * W_dynamic_size;
+                Kokkos::resize(W, W_actual_size);
             }
 
-            for (auto P_it = P.begin(); P_it != P.end(); ++P_it, ++W_cur_size) {
-                const morton_code P_oct = *P_it;
-                W[W_cur_size]           = P_oct;
+            for (auto octant_p : P) {
+                W[W_cur_size++] = octant_p;
             }
 
             P.clear();
         }
 
         std::sort(R.data(), R.data() + R.size());
-        R = linearise_octants(R);
+
+        Kokkos::vector<morton_code> R_vec;
+        for (size_t i = 0; i < R.size(); ++i) {
+            R_vec.push_back(R[i]);
+        }
+        R_vec = linearise_octants(R_vec);
+
+        R = Kokkos::View<morton_code*>(R_vec.data(), R_vec.size());
         return R;
     }
 }  // namespace ippl
