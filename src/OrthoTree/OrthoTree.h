@@ -149,6 +149,8 @@ namespace ippl {
          * @warning THIS FUNCTION ASSUMES THAT THE OCTANTS ARE SORTED
          */
         Kokkos::vector<morton_code> linearise_octants(Kokkos::vector<morton_code> const& octants);
+
+        Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
 #pragma endregion  // paralell construction
 
 #pragma region balancing
