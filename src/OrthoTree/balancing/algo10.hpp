@@ -34,15 +34,18 @@ namespace ippl {
          */
         size_t W_actual_size  = W.size();
         size_t W_dynamic_size = W_actual_size;
-        for (size_t depth = max_depth_m; depth <= depth_N + 1; ++depth) {
+        for (size_t depth = max_depth_m; depth >= depth_N + 1; --depth) {
             // Q = all octants in W at depth depth
             std::vector<morton_code> Q;
-            std::for_each(W.data(), W.data() + W.size(), [this, depth, &Q](const morton_code& oct) {
-                if (morton_helper.get_depth(oct) == depth) {
-                    Q.push_back(oct);
-                }
-                morton_helper.get_parent(oct);
-            });
+            std::for_each(W.data(), W.data() + W_dynamic_size,
+                          [this, depth, &Q](const morton_code& oct) {
+                              if (morton_helper.get_depth(oct) == depth) {
+                                  Q.push_back(oct);
+                              }
+                              morton_helper.get_parent(oct);
+                          });
+
+            std::sort(Q.begin(), Q.end());
 
             // T.size() <= Q.size()
             // T = all octants in Q s.t. a sibling of Q is not yet contained in T
@@ -114,15 +117,13 @@ namespace ippl {
             P.clear();
         }
 
-        std::sort(R.data(), R.data() + R.size());
+        Kokkos::resize(R, R_index);
 
-        Kokkos::vector<morton_code> R_vec;
-        for (size_t i = 0; i < R.size(); ++i) {
-            R_vec.push_back(R[i]);
+        if (R.size() != 0) {
+            std::sort(R.data(), R.data() + R.size());
+            R = linearise_octants(R);
         }
-        R_vec = linearise_octants(R_vec);
 
-        R = Kokkos::View<morton_code*>(R_vec.data(), R_vec.size());
         return R;
     }
 }  // namespace ippl
