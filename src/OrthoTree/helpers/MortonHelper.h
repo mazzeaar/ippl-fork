@@ -151,6 +151,17 @@ namespace ippl {
          * @return morton_code
          */
         inline morton_code get_last_descendant(morton_code code, const size_t level) const;
+        
+        /**
+         * @brief Returns the descendant of code at level level where each time
+         * we descend we take the n-th child where n=0 is the first descendant.
+         *
+         * @param code
+         * @param level
+         * @param n
+         * @return morton_code
+         */
+        inline morton_code get_nth_descendant(morton_code code, const size_t level, size_t n) const;
 
         /**
          * @brief Returns get_first_descendant(code, max_depth - get_depth(code));

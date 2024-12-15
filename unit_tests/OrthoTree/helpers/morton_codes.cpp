@@ -115,6 +115,60 @@ TEST(MortonCodesTest, GetDeepestLastChildTest) {
   EXPECT_EQ(child, expected);
 }
 
+TEST(MortonCodesTest, GetNthChildTestFirstChild) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 8;
+  Morton<Dim> morton(max_depth);
+
+  morton_code parent = morton.encode({ 124, 124, 124 }, 6);
+  morton_code child = morton.get_nth_child(parent, 0);
+  morton_code expected = morton.encode({ 124, 124, 124 }, 7);
+  EXPECT_EQ(child, expected);
+}
+
+TEST(MortonCodesTest, GetNthChildTestAll) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 3;
+  Morton<Dim> morton(max_depth);
+
+  morton_code parent = morton.encode({ 0, 0, 0 }, 0);
+  morton_code child0 = morton.get_nth_descendant(parent, 3, 0);
+  morton_code expected0 = morton.encode({ 0, 0, 0 }, 3);
+  EXPECT_EQ(child0, expected0);
+  morton_code child1 = morton.get_nth_descendant(parent, 3, 1);
+  morton_code expected1 = morton.encode({ 7, 0, 0 }, 3);
+  EXPECT_EQ(child1, expected1);
+
+
+  morton_code child2 = morton.get_nth_descendant(parent, 3, 2);
+  morton_code expected2 = morton.encode({ 0, 7, 0 }, 3);
+  EXPECT_EQ(child2, expected2);
+
+  morton_code child5 = morton.get_nth_descendant(parent, 3, 5);
+  morton_code expected5 = morton.encode({ 7, 0, 7 }, 3);
+  EXPECT_EQ(child5, expected5);
+}
+
+TEST(MortonCodesTest, GetNthDescendant2D) {
+  static constexpr size_t Dim = 2;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code parent = morton.encode({ 0, 0 }, 0);
+  morton_code child0 = morton.get_nth_descendant(parent, 3, 0);
+  morton_code expected0 = morton.encode({ 0, 0 }, 3);
+  EXPECT_EQ(child0, expected0);
+  morton_code child1 = morton.get_nth_descendant(parent, 5, 1);
+  morton_code expected1 = morton.encode({ 31, 0 }, 5);
+  EXPECT_EQ(child1, expected1);
+  morton_code child2 = morton.get_nth_descendant(parent, 3, 2);
+  morton_code expected2 = morton.encode({ 0, 28 }, 3);
+  EXPECT_EQ(child2, expected2);
+  morton_code child3 = morton.get_nth_descendant(parent, 1, 3);
+  morton_code expected3 = morton.encode({ 16, 16 }, 1);
+  EXPECT_EQ(child3, expected3);
+}
+
 TEST(MortonCodesTest, GetNearestCommonAncestorTest) {
   static constexpr size_t Dim = 3;
   const size_t max_depth = 8;
