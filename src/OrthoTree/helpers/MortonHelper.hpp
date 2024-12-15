@@ -286,18 +286,18 @@ namespace ippl {
         for (size_t i = 0; i < Dim; ++i) {
             
             int increment = !!(index & (1 << i));
-            anchor_coords[i] += increment;
+            anchor_coords(i) += increment;
         }
 
-        grid_coordinate offset();
+        grid_coordinate offset{};
         for (size_t i = 0; i < n_children; ++i) {
             
             if (i == index) continue;
 
             for (size_t j = 0; j < Dim; ++j) {
-                offset[j] = (i / (1 << j)) % 2;
+                offset(j) = (i / (1 << j)) % 2;
             }
-            const grid_coordinate current_coords = anchor_coords + offset;
+            const grid_coordinate current_coords = anchor_coords - offset;
 
             keys.push_back(encode(current_coords, max_depth));
         }
