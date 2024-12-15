@@ -215,6 +215,20 @@ namespace ippl {
          */
         inline bool is_sibling(morton_code a, morton_code b) const;
 
+        /**
+         * @brief Returns the n-th child of a code
+         *
+         * @param code
+         * @param n the index of the child 
+         *
+         *
+         * @return morton_code
+         * @PRE n < 2^Dim and depth(code) < max_depth
+         *
+         */
+        inline morton_code get_nth_child(morton_code code, size_t n) const;
+
+
     private:
         const size_t max_depth;
         const size_t depth_mask_shift;

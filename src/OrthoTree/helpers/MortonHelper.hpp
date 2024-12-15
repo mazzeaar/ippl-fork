@@ -92,7 +92,7 @@ namespace ippl {
         vec.reserve(n_children);
 
         for ( size_t i = 0; i < n_children; ++i ) {
-            vec.push_back(first_child + (i * step));
+            vec.push_back(get_nth_child(code, i));
         }
 
         return vec;
@@ -145,18 +145,8 @@ namespace ippl {
     template <size_t Dim>
     inline morton_code Morton<Dim>::get_last_child(morton_code code) const
     {
-        /*
-        std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
-                            + std::string(" can't get the first child at the deepest level");
-        if (get_depth(code) >= max_depth) {
-            std::cerr << "ERROR HERE:    " << error << std::endl;
-            assert(false);
-        }
-        */
 
-        const morton_code first_child = get_first_child(code);
-        const morton_code step = get_step_size(first_child);
-        return first_child + (n_children - 1) * step;
+        return get_nth_child(code, n_children - 1);
     }
 
     // implementation corrected for absolute level
@@ -249,5 +239,12 @@ namespace ippl {
         // i think its faster if we leave this out (no branching)
         // if (get_depth(a) != get_depth(b)) return false;
         return get_parent(a) == get_parent(b);
+    }
+
+    template <size_t Dim>
+    inline morton_code Morton<Dim>::get_nth_child(morton_code code, size_t n) const {
+        assert(n < n_children && "can't get child with index larger than n_children");
+        assert(get_depth(code) < max_depth && "can't get children at the deepest level");
+        return get_first_child(code) + n * get_step_size(get_first_child(code));
     }
 } // namespace ippl
