@@ -15,21 +15,18 @@ namespace ippl {
     template <size_t Dim>
     inline Kokkos::View<morton_code*> OrthoTree<Dim>::algo9(
         Kokkos::View<morton_code*> sorted_incomplete_tree_L) {
-        // W <- L
-        Kokkos::View<morton_code*> balanced_incomplete_tree = sorted_incomplete_tree_L;
-
-        Kokkos::View<std::vector<morton_code>*> T("T", sorted_incomplete_tree_L.size());
+        // W <- L balanced_incomplete_tree
+        Kokkos::View<morton_code*> W = sorted_incomplete_tree_L;
 
         size_t R_base_size = 100;
         size_t R_index     = 0;
         Kokkos::View<morton_code*> R_view("R_view", sorted_incomplete_tree_L.size() + R_base_size);
         // for l <- D_max to (L(N) + 1)
-        for (size_t depth = max_depth_m; depth >= 1; depth--) {
+        for (size_t depth = max_depth_m; depth >= 3; depth--) {
+            Kokkos::View<std::vector<morton_code>*> T("T", W.size());
             // for each w in W
             std::for_each(
-                balanced_incomplete_tree.data(),
-                balanced_incomplete_tree.data() + balanced_incomplete_tree.size(),
-                [&, this](const morton_code octant) {
+                W.data(), W.data() + W.size(), [&, this](const morton_code octant) {
                     if (this->morton_helper.get_depth(octant) != depth) {
                         return;
                     }
@@ -38,10 +35,8 @@ namespace ippl {
                     std::for_each(
                         search_keys.begin(), search_keys.end(),
                         [&, this](const morton_code current_key) {
-                            const auto neighbor_it = std::lower_bound(
-                                balanced_incomplete_tree.data(),
-                                balanced_incomplete_tree.data() + balanced_incomplete_tree.size(),
-                                current_key);
+                            const auto neighbor_it =
+                                std::lower_bound(W.data(), W.data() + W.size(), current_key);
                             morton_code neighbor = *neighbor_it;
                             size_t neighbor_idx  = neighbor_it - search_keys.data();
 
@@ -71,26 +66,28 @@ namespace ippl {
                 }
             };
 
-            for (size_t i = 0; i < balanced_incomplete_tree.size(); i++) {
+            for (size_t i = 0; i < W.size(); i++) {
                 if (T(i).size() != 0) {
                     Kokkos::View<morton_code*> T_view(T(i).data(), T(i).size());
-                    insert_into_R(balanced_incomplete_tree(i), T_view);
+                    insert_into_R(W(i), T_view);
                     T(i).clear();
                 } else {
                     if (R_view.size() == R_index) {
                         Kokkos::resize(R_view, R_view.size() + R_base_size);
                     }
 
-                    R_view[R_index] = balanced_incomplete_tree(i);
+                    R_view[R_index] = W(i);
                     R_index++;
                 }
             }
 
-          R_index = 0;
-          balanced_incomplete_tree = R_view;
+            Kokkos::resize(R_view, R_index);
+
+            R_index = 0;
+            W       = R_view;
         }
 
-        return balanced_incomplete_tree;
+        return W;
     }
 
 }  // namespace ippl

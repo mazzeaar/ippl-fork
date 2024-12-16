@@ -1,14 +1,72 @@
 #include <gtest/gtest.h>
+#include <random>
 
 #include "OrthoTree/OrthoTree.h"
 
 using namespace ippl;
 
+template <size_t Dim>
+auto generateParticles(size_t num_particles_per_proc, const double min_bound, double max_bound,
+                       uint64_t seed) {
+    typedef ippl::ParticleSpatialLayout<double, Dim> playout_type;
+    typedef ippl::OrthoTreeParticle<playout_type> bunch_type;
+
+    playout_type PLayout;
+    bunch_type bunch(PLayout);
+
+    const size_t num_particles = num_particles_per_proc * Comm->size();
+
+    bunch.create(num_particles_per_proc);
+
+    typename bunch_type::particle_position_type::HostMirror R_host = bunch.R.getHostMirror();
+    const double bounds_size                                       = max_bound - min_bound;
+
+    std::mt19937_64 eng(seed);
+    std::uniform_real_distribution<double> unif(min_bound, max_bound);
+
+    // center of the bounding box
+    const double center_x = bounds_size / 2;
+    const double center_y = bounds_size / 2;
+    const double center_z = (Dim == 3) ? bounds_size / 2 : 0.0;
+
+    double armCount     = 2.0;   // number of spiral arms
+    double armTightness = -0.1;  // tightness of the spiral arms
+
+    // max distance from the center
+    double max_distance = 0.9 * bounds_size / 2;
+
+    for (unsigned i = 0; i < num_particles; ++i) {
+        double angle    = unif(eng) * 2.0 * M_PI;
+        double distance = unif(eng) * max_distance;
+
+        double totalArmAngle = 5.0;
+
+        for (int j = 0; j < armCount; ++j) {
+            double armAngle = armTightness * angle + (j + 1) * distance / max_distance * 2.0 * M_PI;
+            double x        = center_x + distance * cos(armAngle + totalArmAngle);
+            double y        = center_y + distance * sin(armAngle + totalArmAngle);
+            double z        = (Dim == 3) ? center_z + distance * sin(angle) : 0.0;
+
+            if constexpr (Dim == 2) {
+                bunch.R(i) = {x, y};
+            } else if constexpr (Dim == 3) {
+                bunch.R(i) = {x, y, z};
+            }
+
+            totalArmAngle += armAngle;
+        }
+    }
+
+    Kokkos::deep_copy(bunch.R.getView(), R_host);
+    bunch.update();
+    return bunch;
+}
+
 TEST(RipplePropagation, TestTest) {
     static constexpr size_t Dim = 2;
-    const size_t max_depth      = 6;
-    const size_t max_particles  = 100;
-    const size_t n_particles    = 10;
+    const size_t max_depth      = 10;
+    const size_t max_particles  = 50;
+    const size_t n_particles    = 20000;
 
     BoundingBox<Dim> bounds({0.0, 0.0}, {1.0, 1.0});
     OrthoTree<Dim> tree(max_depth, max_particles, bounds);
@@ -16,36 +74,17 @@ TEST(RipplePropagation, TestTest) {
 
     Morton<Dim> morton_helper(max_depth);
 
-    morton_code octant_N = 1;
+    auto particles  = generateParticles<Dim>(n_particles, 0.0, 1.0, 100);
+    auto built_tree = tree.build_tree(particles);
 
-    std::vector<morton_code> descs;
-    descs.push_back(morton_helper.get_deepest_first_descendant(octant_N));
-    descs.push_back(morton_helper.get_deepest_last_descendant(octant_N));
+    std::cerr << "HERE!!!!!" << std::endl;
+    auto res = tree.algo9(built_tree);
 
-    /*
-    // different inputs
-    descs.push_back(
-        morton_helper.get_deepest_first_descendant(morton_helper.get_last_child(octant_N)));
-    descs.push_back(
-        morton_helper.get_deepest_last_descendant(morton_helper.get_first_child(octant_N)));
+    // EXPECT_EQ(res.size(), 28);
 
-    // technically invalid
-    descs.push_back(morton_helper.get_deepest_first_descendant(octant_N) + ((340) * 8));
-    descs.push_back(morton_helper.get_deepest_first_descendant(octant_N) + ((680) * 8));
-    */
-
-    Kokkos::View<morton_code*> partial_desc(descs.data(), descs.size());
-
-    auto res = tree.algo9(partial_desc);
-
-    EXPECT_EQ(res.size(), 28);
-
-    /*
     // output to test
-    Kokkos::resize(res, res.size() + 1);
-    res[res.size() - 1] = 0;
+    tree.particles_to_file(particles);
     tree.octants_to_file(res);
-    */
 }
 
 int main(int argc, char** argv) {
