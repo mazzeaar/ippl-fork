@@ -256,10 +256,8 @@ namespace ippl {
         inline vector_t<morton_code> get_search_keys(morton_code code) const;
 
         inline vector_t<morton_code> get_neighbors(const morton_code code,
-                                                   const size_t neighbor_level) {
-            assert(neighbor_level <= max_depth && "Cant go below max_depth!");
-            assert(code != 0 && "Root node has no neighbors!");
-        }
+                                                   const size_t neighbor_level) const;
+
 
     private:
         const size_t max_depth;

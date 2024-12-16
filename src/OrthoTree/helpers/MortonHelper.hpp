@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include "MortonHelper.h"
 
 namespace ippl {
@@ -316,6 +317,35 @@ namespace ippl {
         }
 
         return keys;
+    }
+
+    template<size_t Dim>
+    inline vector_t<morton_code> Morton<Dim>::get_neighbors(const morton_code code,
+                                                   const size_t neighbor_level) const {
+        assert(neighbor_level <= max_depth && "Cant go below max_depth!");
+        assert(code != 0 && "Root node has no neighbors!");
+
+        grid_coordinate coords = decode(code);
+        vector_t<morton_code> neighbors;
+        size_t level_jump = 1 << (max_depth - neighbor_level);
+        grid_coordinate offset{};
+        grid_coordinate neighbor_offset(level_jump);
+        for (size_t i = 0; i < std::pow(3, Dim); ++i) {
+            if (i == (int)std::pow(3, Dim) / 2) continue;
+            for (size_t j = 0; j < Dim; ++j) {
+                offset(j) = ((i / ((int)std::pow(3, j))) % 3)*level_jump;
+            }
+            grid_coordinate current_coords = coords + offset - neighbor_offset;
+            std::cout << "offset: " << offset << std::endl;
+            auto max = *std::max_element(current_coords.begin(), current_coords.end());
+            // if we produce big coordinates due to exiting the domain at the it's maximum
+            // or integer underflow, we skip this key 
+            if (max >= (1 << max_depth)) {
+                continue;
+            }
+            neighbors.push_back(encode(current_coords, neighbor_level));
+        }
+        return neighbors;
     }
 
 } // namespace ippl
