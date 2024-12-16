@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "MortonHelper.h"
 
 namespace ippl {
@@ -284,21 +285,33 @@ namespace ippl {
         grid_coordinate corner_leaf_coords = decode(corner_leaf);
         grid_coordinate anchor_coords = corner_leaf_coords;
         for (size_t i = 0; i < Dim; ++i) {
-            
-            int increment = !!(index & (1 << i));
-            anchor_coords(i) += increment;
+           
+            // based on which index child we are whether we need to offset in 
+            // dimension k depends on whether the k-th bit of index is set
+            if ((index & (1 << i)) != 0)
+                anchor_coords(i) += 1;
         }
-
+        unsigned int max_coord = 1 << max_depth;
         grid_coordinate offset{};
         for (size_t i = 0; i < n_children; ++i) {
-            
+           
+            // i == index means we should get the corner leaf itself
+            // this is not a useful key for searching
             if (i == index) continue;
 
             for (size_t j = 0; j < Dim; ++j) {
+                // this way the single coordinates of the offset are kind of 
+                // counting in binary
                 offset(j) = (i / (1 << j)) % 2;
             }
             const grid_coordinate current_coords = anchor_coords - offset;
 
+            auto max = *std::max_element(current_coords.begin(), current_coords.end());
+            // if we produce big coordinates due to exiting the domain at the it's maximum
+            // or integer underflow, we skip this key
+            if (max >= max_coord ) {
+                continue;
+            } 
             keys.push_back(encode(current_coords, max_depth));
         }
 

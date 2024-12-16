@@ -264,3 +264,33 @@ TEST(MortonCodesTest, GetSearchKeysTest) {
   EXPECT_EQ(keys, expected);
 }
 
+TEST(MortonCodesTest, GetSearchKeysPartialOutOfDomain) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code code = morton.encode({ 24, 16, 16 }, 2);
+  vector_t<morton_code> keys = morton.get_search_keys(code);
+  vector_t<morton_code> expected(3);
+
+  expected[0] = morton.encode({ 31, 16, 15 }, 5);
+  expected[1] = morton.encode({ 31, 15, 15 }, 5);
+  expected[2] = morton.encode({ 31, 15, 16 }, 5);
+
+  std::sort(expected.begin(), expected.end());
+  std::sort(keys.begin(), keys.end());
+
+  EXPECT_EQ(keys, expected);
+}
+
+
+TEST(MortonCodesTest, GetSearchKeysEmpty) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code code = morton.encode({ 0, 0, 0 }, 1);
+  vector_t<morton_code> keys = morton.get_search_keys(code);
+
+  EXPECT_EQ(keys.size(), 0);
+}
