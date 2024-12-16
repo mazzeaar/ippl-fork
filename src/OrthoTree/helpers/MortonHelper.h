@@ -151,6 +151,17 @@ namespace ippl {
          * @return morton_code
          */
         inline morton_code get_last_descendant(morton_code code, const size_t level) const;
+        
+        /**
+         * @brief Returns the descendant of code at level level where each time
+         * we descend we take the n-th child where n=0 is the first descendant.
+         *
+         * @param code
+         * @param level
+         * @param n
+         * @return morton_code
+         */
+        inline morton_code get_nth_descendant(morton_code code, const size_t level, size_t n) const;
 
         /**
          * @brief Returns get_first_descendant(code, max_depth - get_depth(code));
@@ -214,6 +225,36 @@ namespace ippl {
          * @return false
          */
         inline bool is_sibling(morton_code a, morton_code b) const;
+
+        /**
+         * @brief Returns the n-th child of a code
+         *
+         * @param code
+         * @param n the index of the child 
+         *
+         *
+         * @return morton_code
+         * @PRE n < 2^Dim and depth(code) < max_depth
+         *
+         */
+        inline morton_code get_nth_child(morton_code code, size_t n) const;
+
+        /**
+         * @brief Returns which child the child code is of the parent code 
+         * if the parent code isn't the parent this returns -1
+         *
+         * @param parent
+         * @param child
+         * @return int
+         */
+        inline int get_child_index(morton_code parent, morton_code child) const;
+
+        /**
+         * @brief finds the morton codes at lowest level that will allow us to 
+         * find neighbors of the given code 
+         */
+        inline vector_t<morton_code> get_search_keys(morton_code code) const;
+
 
     private:
         const size_t max_depth;
