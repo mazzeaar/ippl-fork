@@ -318,3 +318,38 @@ TEST(MortonCodesTest, GetNeighborsTest) {
 
   EXPECT_EQ(neighbors, expected);
 }
+
+
+TEST(MortonCodesTest, GetNeighborsTest3D) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code code = morton.encode({ 0, 0, 0 }, 4);
+  vector_t<morton_code> neighbors = morton.get_neighbors(code, 4);
+
+  vector_t<morton_code> expected(7);
+  expected[0] = morton.encode({ 2, 0, 0 }, 4);
+  expected[1] = morton.encode({ 0, 2, 0 }, 4);
+  expected[2] = morton.encode({ 2, 2, 0 }, 4);
+  expected[3] = morton.encode({ 0, 0, 2 }, 4);
+  expected[4] = morton.encode({ 2, 0, 2 }, 4);
+  expected[5] = morton.encode({ 0, 2, 2 }, 4);
+  expected[6] = morton.encode({ 2, 2, 2 }, 4);
+
+  std::sort(expected.begin(), expected.end());
+  std::sort(neighbors.begin(), neighbors.end());
+
+  EXPECT_EQ(neighbors, expected);
+}
+
+TEST(MortonCodesTest, GetNeighborsTestRoot) {
+  static constexpr size_t Dim = 3;
+  const size_t max_depth = 5;
+  Morton<Dim> morton(max_depth);
+
+  morton_code code = 0;
+  vector_t<morton_code> neighbors = morton.get_neighbors(code, 0);
+
+  EXPECT_EQ(neighbors.size(), 0);
+}
