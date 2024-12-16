@@ -4,6 +4,7 @@
 #include <Kokkos_Pair.hpp>
 #include <Kokkos_Vector.hpp>
 #include <fstream>
+#include <unordered_set>
 #include <vector>
 
 #include "OrthoTreeTypes.h"
@@ -154,6 +155,11 @@ namespace ippl {
 #pragma endregion  // paralell construction
 
 #pragma region balancing
+
+        Kokkos::View<morton_code*> algo_7_10_base(
+            std::function<void(Kokkos::View<morton_code*>&, size_t&, const morton_code)> R_function,
+            std::function<void(std::unordered_set<morton_code>&, const morton_code)> P_function,
+            const morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L);
 
         Kokkos::View<morton_code*> algo6(morton_code octant_N, morton_code descendant_L);
 
