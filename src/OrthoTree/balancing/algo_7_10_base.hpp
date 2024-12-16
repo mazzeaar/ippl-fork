@@ -12,9 +12,8 @@ namespace ippl {
     */
 
     template <size_t Dim>
+    template <size_t algo_nr>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo_7_10_base(
-        std::function<void(Kokkos::View<morton_code*>&, size_t&, const morton_code)> R_function,
-        std::function<void(std::unordered_set<morton_code>&, const morton_code)> P_function,
         const morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L) {
         const size_t depth_N = morton_helper.get_depth(octant_N);
 
@@ -67,8 +66,39 @@ namespace ippl {
             const size_t T_size = T.size();
             for (size_t i = 0; i < T_size; ++i) {
                 const morton_code T_octant = T[i];
-                R_function(R, R_index, T_octant);
-                P_function(P, T_octant);
+
+                const auto siblings        = this->morton_helper.get_siblings(T_octant);
+                const size_t siblings_size = siblings.size();
+
+                if (R_index + siblings_size >= R_view.size()) {
+                    Kokkos::resize(R_view, 2 * siblings_size);
+                }
+
+                for (morton_code sibling : siblings) {
+                    R_view[R_index] = sibling;
+                    R_index++;
+                }
+
+                const auto parent_octant = this->morton_helper.get_parent(T_octant);
+
+                if constexpr (algo_nr == 10) {
+                    const auto avunculi = this->morton_helper.get_siblings(parent_octant);
+                    // fun fact: this is the collective noun for aunts and uncles:)
+                    for (auto titi : avunculi) {
+                        if (parent_octant == titi) {
+                            // dont include parent itself
+                            continue;
+                        }
+
+                        P_set.insert(titi);
+                    }
+                } else if constexpr (algo_nr == 7) {
+                    const auto neighbors = this->morton_helper.get_neighbors(parent, depth);
+
+                    for (morton_code neighbor : neighbors) {
+                        P.insert(neighbor);
+                    }
+                }
             }
 
             // basically: we decrease the size of W, then we only have to increase it by the surplus
