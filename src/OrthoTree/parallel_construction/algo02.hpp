@@ -1,11 +1,5 @@
 #include "../OrthoTree.h"
 
-/*
-TODO:
-- WRITE TESTS FOR THE FUNCTION
-
-*/
-
 namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
