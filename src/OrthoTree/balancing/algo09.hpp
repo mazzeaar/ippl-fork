@@ -67,14 +67,15 @@ namespace ippl {
                   insert_into_R(balanced_incomplete_tree(i), T_view);
                   T(i).clear();
               } else {
-                  if (R_view.size() - R_index == 0) {
+                  if (R_view.size() == R_index) {
                       Kokkos::resize(R_view, R_view.size() + R_base_size);
-                      remaining_space = R_view.size() - R_index;
                   }
                   R_view[R_index] = balanced_incomplete_tree(i);
                   R_index++;
               }
           }
+          R_index = 0;
+          balanced_incomplete_tree = R_view;
         }
         return balanced_incomplete_tree;
     }
