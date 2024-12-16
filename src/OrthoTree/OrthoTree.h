@@ -162,7 +162,7 @@ namespace ippl {
 
         Kokkos::View<morton_code*> algo9(Kokkos::View<morton_code*> sorted_incomplete_tree_L);
 
-        Kokkos::View<morton_code*> algo10(morton_code octant_N,
+        Kokkos::View<morton_code*> algo10(const morton_code octant_N,
                                           Kokkos::View<morton_code*> partial_descendants_L);
 
         Kokkos::View<morton_code*> algo11(Kokkos::View<morton_code*> distributed_complete_tree_L);
