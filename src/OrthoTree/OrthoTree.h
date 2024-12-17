@@ -206,6 +206,11 @@ namespace ippl {
          */
         void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
 
+        /**
+         * @brief Checks whether the tree is balanced 
+         */
+        bool is_balanced(const Kokkos::View<morton_code*>& tree_view) const;
+
     public:
 #pragma region print_helpers
 

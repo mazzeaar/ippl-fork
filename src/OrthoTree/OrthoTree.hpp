@@ -1,6 +1,7 @@
 #include <ostream>
 
 #include "OrthoTree/OrthoTreeTypes.h"
+#include "OrthoTreeTypes.h"
 
 #include "Communicate/Communicator.h"
 #include "Communicate/Operations.h"
@@ -51,5 +52,33 @@ namespace ippl {
 
         return finished_tree;
     }
+
+    template <size_t Dim>
+      bool OrthoTree<Dim>::is_balanced(const Kokkos::View<morton_code *>& tree_view) const {
+          for (auto& leaf1 : std::span(tree_view.data(), tree_view.data() + tree_view.size())) {
+              for (auto& leaf2 : std::span(tree_view.data(), tree_view.data() + tree_view.size())) {
+                  if (leaf1 == leaf2) {
+                      continue;
+                  }
+
+                  int depth1 = morton_helper.get_depth(leaf1);
+                  int depth2 = morton_helper.get_depth(leaf2);
+
+
+                  if (std::abs(depth1 - depth2) <= 1) {
+                      continue;
+                  }
+                 
+                  // return false if we find neighbors that are more than one 
+                  // level apart
+                  if (morton_helper.are_neighbors(leaf1, leaf2)) {
+                      return false;
+                  }
+              }
+          }
+          
+          // If no two leaves are of differing depth and are neighbors, then the tree is balanced
+          return true;
+      }
 
 }  // namespace ippl

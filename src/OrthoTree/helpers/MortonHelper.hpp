@@ -353,4 +353,31 @@ namespace ippl {
         return neighbors;
     }
 
+    template<size_t Dim>
+    inline bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
+        // if the codes are the same they are not neighbors
+        if (a == b) return false;
+
+        // if the codes are siblings they are neighbors
+        if (is_sibling(a, b)) return true;
+
+        if (get_depth(a) < get_depth(b)) {
+          std::swap(a, b);
+        }
+
+        auto neighbors = get_neighbors(a, get_depth(a));
+
+        for (auto& neighbor : neighbors) {
+          if (neighbor == b) {
+            return true;
+          }
+          
+          if (is_descendant(neighbor, b)) {
+            return true;
+          }
+        }
+
+        return false;
+    }
+
 } // namespace ippl
