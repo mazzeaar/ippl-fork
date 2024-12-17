@@ -18,10 +18,10 @@ namespace ippl {
         // B = algo4
         auto B = block_partition(min_octant, max_octant);
 
-        // C = algo7
+        // TODO:
         // B is coarse and (should) not have many blocks
-        // -> for each block in B call algo7(block_B, descendants(dist_L))?
-        auto C = algo7(B, distributed_complete_tree_L);  // wrong func params?
+        // -> for each block in B call algo7(block_B, descendants(dist_L)) and insert into C?
+        auto C = algo7(B, distributed_complete_tree_L);
 
         // D = intra proc boundaries
         Kokkos::View<morton_code*> D;
