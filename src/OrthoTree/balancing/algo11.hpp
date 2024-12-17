@@ -30,40 +30,40 @@ namespace ippl {
     template <typename... ViewTypes>
     void appendViews(Kokkos::View<morton_code*>& destination, ViewTypes... views) {
         auto result = concatenateViews(destination, views...);
-
-        Kokkos::resize(destination, result.extent(0));
-        Kokkos::parallel_for(
-            "CopyResultBack", result.extent(0),
-            KOKKOS_LAMBDA(const size_t i) { destination(i) = result(i); });
+        Kokkos::View<morton_code*> temp("temp", result.extent(0));
+        Kokkos::deep_copy(temp, result);
+        Kokkos::resize(destination, temp.extent(0));
+        Kokkos::deep_copy(destination, temp);
     }
 
     Kokkos::View<morton_code*> initialise_C_View(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> L_view) {
-        auto C_view = Kokkos::View<morton_code*>("C_view", 0);
-        std::for_each(
-            B_view.data(), B_view.data() + B_view.size(), [&](const morton_code octant_B) {
-                // determine size
-                size_t count = 0;
-                std::for_each(L_view.data(), L_view.data() + L_view.extent(0),
-                              [&](const morton_code octant_dist) {
-                                  if (morton_helper.is_descendant(octant_dist, octant_B)) {
-                                      ++count;
-                                  }
-                              });
+        Kokkos::View<size_t> count("count");
+        Kokkos::parallel_for(
+            "CountValidDescendants", B_view.extent(0), KOKKOS_LAMBDA(const size_t j) {
+                morton_code octant_B = B_view(j);
+                size_t local_count   = 0;
 
-                Kokkos::View<morton_code*> new_view("new_view", count);
+                for (size_t i = 0; i < L_view.extent(0); ++i) {
+                    if (morton_helper.is_descendant(L_view(i), octant_B)) {
+                        ++local_count;
+                    }
+                }
+                Kokkos::atomic_add(&count(), local_count);
+            });
 
-                size_t index = 0;
-                Kokkos::parallel_for(
-                    "FillNewView", L_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                        if (morton_helper.is_descendant(L_view(i), octant_B)) {
-                            new_view(index++) = L_view(i);
-                        }
-                    });
+        Kokkos::View<morton_code*> C_view("C_view", count());
 
-                auto result_View = algo7(octant_B, new_view);
-                appendViews(C, result_View);
+        Kokkos::parallel_for(
+            "FillCView", B_view.extent(0), KOKKOS_LAMBDA(const size_t j) {
+                size_t index         = 0;
+                morton_code octant_B = B_view(j);
+                for (size_t i = 0; i < L_view.extent(0); ++i) {
+                    if (morton_helper.is_descendant(L_view(i), octant_B)) {
+                        C_view(Kokkos::atomic_fetch_add(&index, 1)) = L_view(i);
+                    }
+                }
             });
 
         return C_view;
@@ -72,12 +72,6 @@ namespace ippl {
     Kokkos::View<morton_code*> initialise_D_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> C_view) {
-        // D = intra-proc boundaries
-        Kokkos::View<morton_code*> D_view("D_view", 0);
-
-        // Temporary view to store valid candidates
-        Kokkos::View<size_t> count("count");
-
         auto should_insert = [&](const morton_code octant_X) -> bool {
             const auto neighbours = morton_helper.get_neighbors(octant_X);
 
@@ -96,34 +90,34 @@ namespace ippl {
                 });
         };
 
-        // count valid octants
-        std::for_each(C_view.data(), C_view.data() + C_view.size(),
-                      [&](const morton_code octant_X) {
-                          if (should_insert(octant_X)) {
-                              Kokkos::atomic_increment(&count());
-                          }
-                      });
+        Kokkos::View<size_t> count("count");
+        Kokkos::parallel_for(
+            "CountValidOctants", C_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                if (should_insert(C_view(i))) {
+                    Kokkos::atomic_increment(&count());
+                }
+            });
 
-        Kokkos::resize(D_view, count());
+        // D = intra-proc boundaries
+        Kokkos::View<morton_code*> D_view("D_view", count());
 
         // populate D_view
-        size_t index = 0;
+        Kokkos::View<size_t> index("index");
         Kokkos::parallel_for(
             "PopulateD", C_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
                 const auto octant_X = C_view(i);
 
                 if (should_insert(octant_X)) {
-                    D_view(index++) = octant_X;
+                    D_view(Kokkos::atomic_fetch_add(&index(), 1);) = octant_X;
                 }
             });
 
         return D_view;
     }
-
-    Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
-                                                 Kokkos::View<morton_code*> B_view,
-                                                 Kokkos::View<morton_code*> F_view) {
-        auto should_insert = [&](morton_code octant_to_insert) {
+    those Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
+                                                       Kokkos::View<morton_code*> B_view,
+                                                       Kokkos::View<morton_code*> F_view) {
+        auto should_insert = [&](morton_code octant_to_insert) -> bool {
             const auto neighbours = morton_helper.get_neighbors(octant_to_insert);
             return std::any_of(neighbours.data(), neighbours.data() + neighbours.size(),
                                [&](const morton_code octant_Z) {
@@ -138,17 +132,17 @@ namespace ippl {
                                });
         };
 
-        size_t count = 0;
-        std::for_each(F_view.data(), F_view.data() + F_view.size(),
-                      [&](const morton_code octant_X) {
-                          if (should_insert(octant_X)) {
-                              count++;
-                          }
-                      });
+        Kokkos::View<size_t> count("count");
+        Kokkos::parallel_for(
+            "CountValidOctants", F_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                if (should_insert(F_view(i))) {
+                    Kokkos::atomic_increment(&count());
+                }
+            });
 
-        Kokkos::View<morton_code*> G_view("G_view", count);
+        Kokkos::View<morton_code*> G_view("G_view", count());
 
-        size_t index = 0;
+        Kokkos::View<size_t> index("index");
         Kokkos::parallel_for(
             "InsertValidOctants", F_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
                 auto octant_X = F(i);
@@ -164,7 +158,7 @@ namespace ippl {
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> H_view,
                                                  Kokkos::View<morton_code*> F_view) {
-        auto should_insert = [&](morton_code octant_to_insert) {
+        auto should_insert = [&](morton_code octant_to_insert) -> bool {
             const auto neighbours = morton_helper.get_neighbors(octant_to_insert);
             return std::any_of(neighbours.data(), neighbours.data() + neighbours.size(),
                                [&](const morton_code octant_Z) {
@@ -179,24 +173,24 @@ namespace ippl {
                                });
         };
 
-        size_t count = 0;
-        std::for_each(H_view.data(), H_view.data() + H_view.size(),
-                      [&](const morton_code octant_X) {
-                          if (should_insert(octant_X)) {
-                              count++;
-                          }
-                      });
+        Kokkos::View<size_t> count("count");
+        Kokkos::parallel_for(
+            "CountValidOctants", H_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                if (should_insert(H_view(i))) {
+                    Kokkos::atomic_increment(&count());
+                }
+            });
 
-        std::for_each(F_view.data(), F_view.data() + F_view.size(),
-                      [&](const morton_code octant_X) {
-                          if (should_insert(octant_X)) {
-                              count++;
-                          }
-                      });
+        Kokkos::parallel_for(
+            "CountValidOctants", F_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                if (should_insert(F_view(i))) {
+                    Kokkos::atomic_increment(&count());
+                }
+            });
 
-        Kokkos::View<morton_code*> R_view("R_view", count);
+        Kokkos::View<morton_code*> R_view("R_view", count());
 
-        size_t index = 0;
+        Kokkos::View<size_t> index("index");
         Kokkos::parallel_for(
             "InsertValidOctants", H_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
                 auto octant_X = H_view(i);
@@ -261,10 +255,11 @@ namespace ippl {
 
         // TODO:
         // T = receive
+        Kokkos::View<morton_code*> T_view;
 
         for (const morton_code octant_G : std::span(G_view.data(), G_view.data() + G_view.size())) {
             for (const morton_code octant_T :
-                 std::span(T_View.data(), T_View.data() + T_View.size())) {
+                 std::span(T_view.data(), T_view.data() + T_view.size())) {
                 auto is_in_insulation_layer = [&](const morton_code octant,
                                                   const morton_code octant_to_insulate) -> bool {
                     for (const morton_code i_octant :
@@ -288,11 +283,11 @@ namespace ippl {
 
         // TODO:
         // K = receive
+        Kokkos::View<morton_code*> K_view;
 
-        auto H_view = algo9(concatenateViews(G_view, T_View, K_View));
+        auto H_view = algo9(concatenateViews(G_view, T_view, K_View));
 
-        Kokkos::View<morton_code*> R_view =
-            initialise_R_view(this->morton_helper, B_view, H_view, F_view);
+        auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         R_view = linearise_octants(R_view);
 
         return R_view;
