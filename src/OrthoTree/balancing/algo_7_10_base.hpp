@@ -1,4 +1,6 @@
+#pragma once
 #include <unordered_set>
+
 
 #include "../OrthoTree.h"
 
@@ -17,7 +19,8 @@ namespace ippl {
         const morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L) {
         const size_t depth_N = morton_helper.get_depth(octant_N);
 
-        Kokkos::View<morton_code*> W(partial_descendants_L.data(), partial_descendants_L.size());
+        Kokkos::View<morton_code*> W( "W", partial_descendants_L.size());
+        Kokkos::deep_copy(W, partial_descendants_L);
         Kokkos::View<morton_code*> R_view("R_View", 1000);  // random min size (too large)
         size_t R_index = 0;
 
@@ -93,10 +96,12 @@ namespace ippl {
                         P.insert(titi);
                     }
                 } else if constexpr (algo_nr == 7) {
-                    const auto neighbors = this->morton_helper.get_neighbors(parent_octant, depth);
+                    const auto neighbors = this->morton_helper.get_neighbors(parent_octant, depth-1);
 
                     for (morton_code neighbor : neighbors) {
-                        P.insert(neighbor);
+                        if (morton_helper.is_descendant(neighbor, octant_N)) {
+                            P.insert(neighbor);
+                        }
                     }
                 }
             }
@@ -125,11 +130,14 @@ namespace ippl {
             for (auto octant_p : P) {
                 W[W_cur_size++] = octant_p;
             }
-
             P.clear();
         }
 
         Kokkos::resize(R_view, R_index);
+
+        for (size_t i = 0; i < R_view.size(); i++) {
+            //std::cout << morton_helper.decode(R_view(i)) << std::endl;
+        }
 
         if (R_view.size() != 0) {
             std::sort(R_view.data(), R_view.data() + R_view.size());
