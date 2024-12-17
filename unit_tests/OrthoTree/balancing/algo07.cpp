@@ -2,7 +2,7 @@
 
 #include "OrthoTree/OrthoTree.h"
 using namespace ippl;
-TEST(BalanceSubtreeTest, BalanceSubtree2DSimple) {
+TEST(BalanceSubtreeTest, 2DSimple) {
     constexpr size_t Dim = 2;
     size_t max_depth = 3;
     OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0}, real_coordinate_template<Dim>{1, 1}));
@@ -52,6 +52,48 @@ TEST(BalanceSubtreeTest, BalanceSubtree2DSimple) {
 }
 
 
+TEST(BalanceSubtreeTest, 2DActualSubtree) {
+    constexpr size_t Dim = 2;
+    size_t max_depth = 4;
+    OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0}, real_coordinate_template<Dim>{1, 1}));
+    Morton<Dim> morton(max_depth);
+
+    morton_code octant_N = morton.encode({0, 0}, 1);
+
+    Kokkos::View<morton_code*> tree_view("tree_view", 10);
+    tree_view(0) = morton.encode({0, 0}, 2);
+    tree_view(1) = morton.encode({0, 4}, 2);
+    tree_view(2) = morton.encode({4, 0}, 2);
+    tree_view(3) = morton.encode({4, 4}, 3);
+    tree_view(4) = morton.encode({4, 6}, 3);
+    tree_view(5) = morton.encode({6, 6}, 3);
+    tree_view(6) = morton.encode({6, 4}, 4);
+    tree_view(7) = morton.encode({6, 5}, 4);
+    tree_view(8) = morton.encode({7, 4}, 4);
+    tree_view(9) = morton.encode({7, 5}, 4);
+
+    Kokkos::View<morton_code*> balanced_tree = tree.algo7(octant_N, tree_view);
+
+    Kokkos::View<morton_code*> expected("expected", 13);
+    for (size_t i = 0; i < 7; ++i) {
+        expected(i) = tree_view(i+3);
+    }
+    expected(7) = morton.encode({0, 4}, 2);
+    expected(8) = morton.encode({0, 0}, 2);
+    expected(9) = morton.encode({4, 0}, 3);
+    expected(10) = morton.encode({6, 0}, 3);
+    expected(11) = morton.encode({4, 2}, 3);
+    expected(12) = morton.encode({6, 2}, 3);
+    
+    std::sort(expected.data(), expected.data() + expected.size());
+    
+    ASSERT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
+    for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
+        EXPECT_EQ(balanced_tree(i), expected(i))
+          << "expected=" << morton.decode(expected(i)) 
+          << ", actual=" << morton.decode(balanced_tree(i));
+    }
+}
 
 
 int main(int argc, char** argv) {
