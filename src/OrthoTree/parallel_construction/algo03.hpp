@@ -1,5 +1,6 @@
-#include "../OrthoTree.h"
+#include <span>
 
+#include "../OrthoTree.h"
 /*
 TODO:
 - IMPLEMENT THIS NEW FUNCTION SIGNATURE
@@ -14,50 +15,45 @@ namespace ippl {
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::vector<morton_code> OrthoTree<Dim>::complete_tree(
-        Kokkos::vector<morton_code>& octants) {
-        START_FUNC;
-        world_rank = Comm->rank();
-        world_size = Comm->size();
-
-        logger << "called with n_octants=" << octants.size() << endl;
+    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> octants) {
         // this removes duplicates, inefficient as of now
         std::map<morton_code, int> m;
-        for (auto octant : octants) {
+        for (auto octant : std::span(octants.data(), octants.size())) {
             ++m[octant];
         }
 
-        logger << "map has " << m.size()
-               << "octants in total, previously we had: " << octants.size() << endl;
-
-        octants.clear();
+        Kokkos::resize(octants, m.size());  // shrink
+        size_t octants_idx = 0;
         for (const auto [octant, count] : m) {
-            octants.push_back(octant);
+            octants[octants_idx] = octant;
+            octants_idx++;
         }
 
         octants = linearise_octants(octants);
 
-        Kokkos::vector<size_t> weights(octants.size(), 1);
-        octants = partition(octants, weights);
+        Kokkos::View<size_t*> weights_view("weights_view", octants.size());
+        for (size_t i = 0; i < octants.size(); ++i) {
+            weights_view[i] = 1;
+        }
+
+        octants = partition(octants, weights_view);
+
+        Kokkos::resize(octants, octants.size() + 1);
 
         morton_code first_rank0;
         if (world_rank == 0) {
             const morton_code dfd_root = morton_helper.get_deepest_first_descendant(morton_code(0));
             const morton_code A_finest =
-                morton_helper.get_nearest_common_ancestor(dfd_root, octants.front());
+                morton_helper.get_nearest_common_ancestor(dfd_root, octants[0]);
 
-            assert(morton_helper.get_depth(A_finest) < max_depth_m);
-            const morton_code first_child = morton_helper.get_first_child(A_finest);
-
-            // this imitates push_front
-            first_rank0 = first_child;
+            first_rank0 = morton_helper.get_first_child(A_finest);
         } else if (world_rank == world_size - 1) {
             const morton_code dld_root = morton_helper.get_deepest_last_descendant(morton_code(0));
             const morton_code A_finest =
-                morton_helper.get_nearest_common_ancestor(dld_root, octants.back());
+                morton_helper.get_nearest_common_ancestor(dld_root, octants[octants.size() - 2]);
             const morton_code last_child = morton_helper.get_last_child(A_finest);
-            assert(morton_helper.get_depth(A_finest) < max_depth_m);
-            octants.push_back(last_child);
+
+            octants[octants.size() - 1] = last_child;
         }
 
         if (world_rank > 0) {
@@ -68,44 +64,63 @@ namespace ippl {
         if (world_rank < world_size - 1) {
             mpi::Status status;
             Comm->recv(&buff, 1, world_rank + 1, 0, status);
+
             // do we need a status check here or not?
-            octants.push_back(buff);
+            octants[octants.size() - 1] = buff;
         }
 
-        Kokkos::vector<morton_code> R;
+        size_t R_base_size = 100;
+        size_t R_index     = 0;
+        Kokkos::View<morton_code*> R_view("R_view", R_base_size);
 
-        // rank 0 works differently, as we need to 'simulate' push_front
-        if (world_rank == 0) {
-            R.push_back(first_rank0);
-            for (morton_code elem : complete_region(first_rank0, octants[0])) {
-                R.push_back(elem);
+        auto insert_into_R = [&](morton_code octant_a, morton_code octant_b) {
+            auto complete_region_view       = complete_region(octant_a, octant_b);
+            const size_t additional_octants = complete_region_view.size() + 1;
+            size_t remaining_space          = R_view.size() - R_index;
+
+            while (remaining_space <= additional_octants) {
+                Kokkos::resize(R_view, R_view.size() + R_base_size);
+                remaining_space = R_view.size() - R_index;
             }
-        }
 
-        Comm->barrier();
-        if (world_rank == 0) {
-            LOG << "GOT HERE" << endl;
-        }
+            R_view[R_index] = octant_a;
+            R_index++;
 
-        // currently a crash somewhere in this call stack
-        const size_t n = octants.size();
-        for (size_t i = 0; i < n - 1; ++i) {
-            R.push_back(octants[i]);
-            for (morton_code elem : complete_region(octants[i], octants[i + 1])) {
-                R.push_back(elem);
+            for (morton_code elem :
+                 std::span(complete_region_view.data(), complete_region_view.size())) {
+                R_view[R_index] = elem;
+                R_index++;
             }
+        };
+
+        if (world_rank == 0) {
+            // special case for rank 0, as we push_front'ed earlier
+            insert_into_R(first_rank0, octants[0]);
         }
 
-        Comm->barrier();
-        if (world_rank == 0) {
-            LOG << "DIDNT GET HERE" << endl;
+        for (size_t i = 0; i < octants.size() - 1; ++i) {
+            insert_into_R(octants[i], octants[i + 1]);
         }
 
         if (world_rank == world_size - 1) {
-            R.push_back(octants[n - 1]);
+            const size_t R_size = R_view.size();
+            // we can either be smaller or have a perfect fit, larger (should) not be possible
+            if (R_index + 1 < R_size) {
+                // shrink
+                Kokkos::resize(R_view, R_index + 1);
+            } else if (R_index + 1 > R_size) {
+                // this is not possible
+                assert(false && "how the fuck did we get here?");
+            }
+
+            // insert to the back
+            R_view[R_index] = octants[octants.size() - 1];
+            R_index++;
+
+        } else {
+            Kokkos::resize(R_view, R_index);
         }
 
-        END_FUNC;
-        return R;
+        return R_view;
     }
 }  // namespace ippl

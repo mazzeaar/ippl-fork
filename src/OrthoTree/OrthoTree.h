@@ -48,8 +48,6 @@ namespace ippl {
         using particle_t      = particle_type_template<Dim>;
         using bounds_t        = BoundingBox<Dim>;
 
-        using aid_list_t = Kokkos::vector<Kokkos::pair<morton_code, size_t>>;
-
         const size_t max_depth_m;
         const size_t max_particles_per_node_m;
         const bounds_t root_bounds_m;
@@ -110,14 +108,14 @@ namespace ippl {
          *
          * @return list of morton codes of minimal linear octree between the two octants
          **/
-        Kokkos::vector<morton_code> complete_region(morton_code code_a, morton_code code_b);
+        Kokkos::View<morton_code*> complete_region(morton_code code_a, morton_code code_b);
 
         /**
          * ALGO 3
          *
          * @brief Implements the logic part of algorithm 3.
          */
-        Kokkos::vector<morton_code> complete_tree(Kokkos::vector<morton_code>& tree);
+        Kokkos::View<morton_code*> complete_tree(Kokkos::View<morton_code*> tree);
 
         /**
          * ALGO 4
@@ -128,7 +126,7 @@ namespace ippl {
          *
          * @return block partitioned octree, and unpartitioned_tree is re-distributed
          **/
-        auto block_partition(morton_code min_octant, morton_code max_octant);
+        Kokkos::View<morton_code*> block_partition(morton_code min_octant, morton_code max_octant);
 
         /**
          * ALGO 5
@@ -136,8 +134,6 @@ namespace ippl {
          * @brief This function partitions the workload of building the tree across
          * the available mpi ranks.
          */
-        Kokkos::vector<morton_code> partition(Kokkos::vector<morton_code>& octants,
-                                              Kokkos::vector<size_t>& weights);
         Kokkos::View<morton_code*> partition(Kokkos::View<morton_code*> octants,
                                              Kokkos::View<size_t*> weights);
 
@@ -149,9 +145,8 @@ namespace ippl {
          * @return list of linearised octants - sorted
          * @warning THIS FUNCTION ASSUMES THAT THE OCTANTS ARE SORTED
          */
-        Kokkos::vector<morton_code> linearise_octants(Kokkos::vector<morton_code> const& octants);
-
         Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
+
 #pragma endregion  // paralell construction
 
 #pragma region balancing
