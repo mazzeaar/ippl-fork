@@ -68,7 +68,7 @@ TEST(CompleteRegion, OneParentOfAnother) {
     Kokkos::View<morton_code*> complete_region = tree.complete_region(code_a, code_b);
 
     ASSERT_EQ(0, complete_region.size()) 
-        << "Complete region ! Size: " << complete_region.size();
+        << "Complete region! Size: " << complete_region.size();
 }
 
 // this is required to test the orthotree, as it depends on ippl

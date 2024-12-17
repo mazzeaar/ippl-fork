@@ -1,17 +1,6 @@
 #include <span>
 
 #include "../OrthoTree.h"
-/*
-TODO:
-- IMPLEMENT THIS NEW FUNCTION SIGNATURE
-- WRITE TESTS FOR THE FUNCTION
-- ADJUST THE SIGNATURE IN ORTHOTREE.H
-
-namespace ippl {
-    template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*>& octants);
-}  // namespace ippl
-*/
 
 namespace ippl {
     template <size_t Dim>
@@ -38,7 +27,7 @@ namespace ippl {
 
         octants = partition(octants, weights_view);
 
-        Kokkos::resize(octants, octants.size() + 1);
+        Kokkos::resize(octants, octants.size());
 
         morton_code first_rank0;
         if (world_rank == 0) {
@@ -108,9 +97,6 @@ namespace ippl {
             if (R_index + 1 < R_size) {
                 // shrink
                 Kokkos::resize(R_view, R_index + 1);
-            } else if (R_index + 1 > R_size) {
-                // this is not possible
-                assert(false && "how the fuck did we get here?");
             }
 
             // insert to the back

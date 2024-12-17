@@ -4,13 +4,15 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
                                                                morton_code code_b) {
-        assert(code_a < code_b);
+        if (code_a > code_b) {
+            std::swap(code_a, code_b);
+        }
 
-        // special case (not specified in the paper): 
-        // one code is an ancestor of the other 
+        // special case (not specified in the paper because it shouldn't come up as a real case): 
+        // one code is an ancestor of the other, or they're the same code 
         // -> the bigger code is already the region, don't need to complete anything
-        if (morton_helper.is_ancestor(code_a, code_b)
-            || morton_helper.is_ancestor(code_b, code_a)) {
+        if (morton_helper.is_ancestor(code_b, code_a) 
+            || code_a == code_b) { // note: code_a <= code_b, children are always bigger their parents
             Kokkos::View<morton_code*> min_lin_tree_empty("empty min_lin_tree", 0);
             return min_lin_tree_empty;
         }
