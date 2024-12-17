@@ -34,9 +34,10 @@ add_test_with_gtest(morton_test helpers/morton_codes.cpp)
 add_test_with_gtest(aid_list_test helpers/aid_list.cpp)
 
 # paralell construction tests
+add_test_with_gtest(complete_region_test parallel_construction/algo2.cpp)
+add_test_with_gtest(complete_octree_test parallel_construction/algo3.cpp)
 add_test_with_gtest(parallel_tree_test parallel_construction/algo5.cpp)
 add_test_with_gtest(linearise_test parallel_construction/algo8.cpp)
-add_test_with_gtest(complete_region_test parallel_construction/algo2.cpp)
 
 add_test_with_gtest(parallel_construction_2 parallel_construction/full_test/2_ranks.cpp)
 add_test_with_gtest(parallel_construction_4 parallel_construction/full_test/4_ranks.cpp)
