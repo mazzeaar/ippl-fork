@@ -213,7 +213,7 @@ namespace ippl {
 
         Kokkos::View<morton_code* [2]> min_max_view("min_max_view", Comm->size());
         Kokkos::parallel_for(
-            "FillMinMaxView", Comm->size(), KOKKOS_LAMBDA(const int rank) {
+            "FillMinMaxView", Comm->size(), KOKKOS_LAMBDA(const size_t rank) {
                 min_max_view(rank, 0) = gathered_data_buff[rank * 2];      // min oct
                 min_max_view(rank, 1) = gathered_data_buff[rank * 2 + 1];  // max oct
             });
@@ -221,11 +221,110 @@ namespace ippl {
         return min_max_view;
     }
 
+    std::pair<Kokkos::View<morton_code*>, Kokkos::View<size_t*>> exchange_B_glob_with_offsets(
+        Kokkos::View<morton_code*> B_view) {
+        // chatgpt function, im too cooked for this
+
+        const size_t comm_size = Comm->size();
+        const size_t rank      = Comm->rank();
+
+        // Step 1: Gather sizes of B_view across ranks
+        size_t local_size = B_view.extent(0);
+        Kokkos::View<size_t*> sizes("sizes", comm_size);
+
+        // Gather sizes from all ranks
+        Comm->allgather(&local_size, sizes.data(), 1);
+
+        // Step 2: Compute rank_offsets using prefix sum
+        Kokkos::View<size_t*> rank_offsets("rank_offsets", comm_size + 1);
+        Kokkos::parallel_scan(
+            "ComputeOffsets", comm_size,
+            KOKKOS_LAMBDA(const int i, size_t& partial_sum, const bool final) {
+                if (final)
+                    rank_offsets(i) = partial_sum;
+                partial_sum += sizes(i);
+                if (final && i == comm_size - 1)
+                    rank_offsets(comm_size) = partial_sum;
+            });
+
+        size_t total_size;
+        Kokkos::deep_copy(total_size, rank_offsets(comm_size));
+
+        // Step 3: Allocate B_glob
+        Kokkos::View<morton_code*> B_glob("B_glob", total_size);
+
+        // Step 4: Copy local data to host space
+        Kokkos::View<morton_code*, Kokkos::HostSpace> local_data("local_data", local_size);
+        Kokkos::deep_copy(local_data, B_view);
+
+        // Prepare recvcounts and displacements for allgatherv
+        std::vector<int> recvcounts(comm_size);
+        std::vector<int> displacements(comm_size);
+        for (int i = 0; i < comm_size; ++i) {
+            recvcounts[i]    = static_cast<int>(sizes(i));
+            displacements[i] = static_cast<int>(rank_offsets(i));
+        }
+
+        // Step 5: Use Comm::allgatherv to exchange data
+        Comm->allgatherv(local_data.data(), local_size, B_glob.data(), recvcounts.data(),
+                         displacements.data());
+
+        return {B_glob, rank_offsets};
+    }
+
+    Kokkos::View<morton_code*> communicate_T_view(
+        Kokkos::View<std::vector<morton_code>*> data_to_send, ippl::mpi::Communicator& Comm) {
+        const size_t world_size = Comm.size();
+        const size_t world_rank = Comm.rank();
+
+        // Step 1: Determine send and receive counts
+        std::vector<int> send_counts(world_size, 0);
+        std::vector<int> recv_counts(world_size, 0);
+
+        for (size_t i = 0; i < world_size; ++i) {
+            send_counts[i] = data_to_send(i).size();  // Count of data to send to each rank
+        }
+
+        // Exchange send counts to get recv_counts
+        Comm->alltoall(send_counts.data(), recv_counts.data(), 1);
+
+        // Step 2: Flatten send buffer and prepare displacements
+        std::vector<int> send_displs(world_size, 0);
+        std::vector<int> recv_displs(world_size, 0);
+        std::vector<morton_code> send_buffer;
+
+        for (size_t i = 0; i < world_size; ++i) {
+            send_displs[i] = send_buffer.size();
+            send_buffer.insert(send_buffer.end(), data_to_send(i).begin(), data_to_send(i).end());
+        }
+
+        int total_recv_size = 0;
+        for (size_t i = 0; i < world_size; ++i) {
+            recv_displs[i] = total_recv_size;
+            total_recv_size += recv_counts[i];
+        }
+
+        // Step 3: Allocate receive buffer and perform Alltoallv
+        std::vector<morton_code> recv_buffer(total_recv_size);
+
+        Comm->alltoallv(send_buffer.data(), send_counts.data(), send_displs.data(),
+                        recv_buffer.data(), recv_counts.data(), recv_displs.data());
+
+        // Step 4: Copy received data into a Kokkos::View
+        Kokkos::View<morton_code*> T_view("T_view", total_recv_size);
+        Kokkos::parallel_for(
+            "CopyRecvToView", total_recv_size,
+            KOKKOS_LAMBDA(const int i) { T_view(i) = recv_buffer[i]; });
+
+        std::sort(T_view.data(), T_view.data() + T_view.size());
+        return T_view;
+    }
+
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(
         Kokkos::View<morton_code*> distributed_complete_tree_L) {
         // B = algo4
-        auto B_view =
+        Kokkos::View<morton_code*> B_view =
             block_partition(distributed_complete_tree_L(0),
                             distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
 
@@ -242,6 +341,11 @@ namespace ippl {
         // G = inter proc boundaries
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view);
 
+        // copy octants that go to ranks in here
+        Kokkos::View<std::vector<morton_code>*> data_to_send1("send_data", Comm->size());
+
+        auto [B_glob_view, B_glob_rank_offsets] = exchange_B_glob_with_offsets(B_view);
+
         for (const morton_code octant_G : std::span(G_view.data(), G_view.data() + G_view.size())) {
             // using a set is probably worth it here,
             // has the inner loop is (probably
@@ -251,32 +355,28 @@ namespace ippl {
                 insulation_layer_data.data(),
                 insulation_layer_data.data() + insulation_layer_data.size());
 
-            // TODO:
-            // algo4 octants not on this proc
-            // for each b in (B_glob - B)
-
-            // to figure out where to send octants later
-            Kokkos::View<morton_code* [2]> rank_boundaries = exchange_min_max_octants(B_view);
-            // copy octants that go to ranks in here
-            Kokkos::View<std::vector<morton_code>*> data_to_send;
-
-            Kokkos::View<morton_code*> B_glob;
-            for (morton_code octant_B_glob : B_glob) {
-                if (i_layer.count(octant_B_glob) == 0) {
+            for (size_t rank = 0; rank < Comm->size(); ++rank) {
+                if (rank == Comm->rank()) {
+                    // no need to send own data
                     continue;
                 }
 
-                // TODO:
-                // send g, rank(octant_G) -> step 10
-                size_t target_rank;  // figure out from which rank this octant is
-                data_to_send(target_rank).push_back(octant_B_glob);
+                for (size_t i = B_glob_rank_offsets(rank);
+                     (i < B_glob_view.size()) && (i < B_glob_rank_offsets(rank)); ++i) {
+                    const morton_code ooctant_B_glob = B_glob_view(i);
+
+                    if (i_layer.count(octant_B_glob) == 0) {
+                        continue;
+                    }
+
+                    data_to_send1(rank).push_back(octant_B_glob);
+                }
             }
         }
 
-        // send data_to_send to corresponding ranks (gather?)
-        // T = receive
-        Kokkos::View<morton_code*> T_view;
+        Kokkos::View<morton_code*> T_view = communicate_T_view(data_to_send1);
 
+        Kokkos::View<std::vector<morton_code>*> data_to_send2("send_data", Comm->size());
         for (const morton_code octant_G : std::span(G_view.data(), G_view.data() + G_view.size())) {
             for (const morton_code octant_T :
                  std::span(T_view.data(), T_view.data() + T_view.size())) {
@@ -295,9 +395,12 @@ namespace ippl {
                     continue;
                 }
 
+                if (data_to_send1.find(octant_G) != data_to_send2.end()) {
+                    continue;
+                }
                 // TODO:
                 // if g was not sent to rank(octant_T)
-                // in step 10
+                // i dont get this lol
 
                 // do same thing as above
             }
