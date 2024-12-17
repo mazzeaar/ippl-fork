@@ -201,6 +201,26 @@ namespace ippl {
         return R_view;
     }
 
+    Kokkos::View<morton_code* [2]> exchange_min_max_octants(Kokkos::View<morton_code*> B_view) {
+        const morton_code local_min = B_view(0);
+        const morton_code local_max = B_view(B_view.extent(0) - 1);
+
+        morton_code local_data[2] = {local_min, local_max};
+
+        std::vector<morton_code> gathered_data_buff(Comm->size() * 2);
+
+        Comm->allgather(local_data, gathered_data_buff.data(), 2);
+
+        Kokkos::View<morton_code* [2]> min_max_view("min_max_view", Comm->size());
+        Kokkos::parallel_for(
+            "FillMinMaxView", Comm->size(), KOKKOS_LAMBDA(const int rank) {
+                min_max_view(rank, 0) = gathered_data_buff[rank * 2];      // min oct
+                min_max_view(rank, 1) = gathered_data_buff[rank * 2 + 1];  // max oct
+            });
+
+        return min_max_view;
+    }
+
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(
         Kokkos::View<morton_code*> distributed_complete_tree_L) {
@@ -234,17 +254,26 @@ namespace ippl {
             // TODO:
             // algo4 octants not on this proc
             // for each b in (B_glob - B)
-            for (morton_code octant_B : B) {
-                if (i_layer.count(octant_B) == 0) {
+
+            // to figure out where to send octants later
+            Kokkos::View<morton_code* [2]> rank_boundaries = exchange_min_max_octants(B_view);
+            // copy octants that go to ranks in here
+            Kokkos::View<std::vector<morton_code>*> data_to_send;
+
+            Kokkos::View<morton_code*> B_glob;
+            for (morton_code octant_B_glob : B_glob) {
+                if (i_layer.count(octant_B_glob) == 0) {
                     continue;
                 }
 
                 // TODO:
                 // send g, rank(octant_G) -> step 10
+                size_t target_rank;  // figure out from which rank this octant is
+                data_to_send(target_rank).push_back(octant_B_glob);
             }
         }
 
-        // TODO:
+        // send data_to_send to corresponding ranks (gather?)
         // T = receive
         Kokkos::View<morton_code*> T_view;
 
@@ -269,10 +298,13 @@ namespace ippl {
                 // TODO:
                 // if g was not sent to rank(octant_T)
                 // in step 10
+
+                // do same thing as above
             }
         }
 
         // TODO:
+        // receive the same way as above
         // K = receive
         Kokkos::View<morton_code*> K_view;
 
