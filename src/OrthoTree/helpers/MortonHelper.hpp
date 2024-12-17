@@ -353,6 +353,12 @@ namespace ippl {
         return neighbors;
     }
 
+    template <size_t Dim>
+    inline vector_t<morton_code> Morton<Dim>::get_insulation_layer(const morton_code code) const {
+        const size_t depth = get_depth(code);
+        return get_neighbors(code, depth);
+    }
+
     template<size_t Dim>
     inline bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
         // if the codes are the same they are not neighbors

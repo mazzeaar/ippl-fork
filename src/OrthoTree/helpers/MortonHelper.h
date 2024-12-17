@@ -258,8 +258,9 @@ namespace ippl {
         inline vector_t<morton_code> get_neighbors(const morton_code code,
                                                    const size_t neighbor_level) const;
 
-        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
+        inline vector_t<morton_code> get_insulation_layer(const morton_code code) const;
 
+        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
 
     private:
         const size_t max_depth;
