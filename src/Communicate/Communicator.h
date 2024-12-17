@@ -99,6 +99,10 @@ namespace ippl {
             template <typename T>
             void allgather(const T* input, T* output, int count);
 
+            template <typename T>
+            void allgatherv(const T* input, int send_count, T* output, const int* recv_counts,
+                            const int* displacements);
+
             /* Scatter the data from all other nodes to a
              * specific node (default: 0).
              */
