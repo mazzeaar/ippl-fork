@@ -18,7 +18,7 @@ namespace ippl {
         const size_t depth_N = morton_helper.get_depth(octant_N);
 
         Kokkos::View<morton_code*> W(partial_descendants_L.data(), partial_descendants_L.size());
-        Kokkos::View<morton_code*> R("R_View", 1000);  // random min size (too large)
+        Kokkos::View<morton_code*> R_view("R_View", 1000);  // random min size (too large)
         size_t R_index = 0;
 
         // this is a set because we need unique morton codes
@@ -90,10 +90,10 @@ namespace ippl {
                             continue;
                         }
 
-                        P_set.insert(titi);
+                        P.insert(titi);
                     }
                 } else if constexpr (algo_nr == 7) {
-                    const auto neighbors = this->morton_helper.get_neighbors(parent, depth);
+                    const auto neighbors = this->morton_helper.get_neighbors(parent_octant, depth);
 
                     for (morton_code neighbor : neighbors) {
                         P.insert(neighbor);
@@ -129,13 +129,13 @@ namespace ippl {
             P.clear();
         }
 
-        Kokkos::resize(R, R_index);
+        Kokkos::resize(R_view, R_index);
 
-        if (R.size() != 0) {
-            std::sort(R.data(), R.data() + R.size());
-            R = linearise_octants(R);
+        if (R_view.size() != 0) {
+            std::sort(R_view.data(), R_view.data() + R_view.size());
+            R_view = linearise_octants(R_view);
         }
 
-        return R;
+        return R_view;
     }
 }  // namespace ippl
