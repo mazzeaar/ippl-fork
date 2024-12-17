@@ -342,8 +342,8 @@ namespace ippl {
 // implementations of balancing algos
 // #include "balancing/algo06.hpp"
 // #include "balancing/algo07.hpp"
-// #include "balancing/algo09.hpp"
-// #include "balancing/algo10.hpp"
+#include "balancing/algo09.hpp"
+#include "balancing/algo10.hpp"
 // #include "balancing/algo11.hpp"
 
 #endif  // ORTHOTREE_GUARD

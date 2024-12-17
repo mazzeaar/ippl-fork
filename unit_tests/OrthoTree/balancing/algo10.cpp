@@ -1,5 +1,3 @@
-#include "OrthoTree/balancing/algo10.hpp"
-
 #include <gtest/gtest.h>
 
 #include "OrthoTree/OrthoTree.h"
