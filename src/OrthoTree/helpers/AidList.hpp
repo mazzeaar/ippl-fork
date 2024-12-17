@@ -199,10 +199,10 @@ namespace ippl {
 
     template <size_t Dim>
     template <typename Container>
-    Kokkos::vector<size_t> AidList<Dim>::getNumParticlesInOctantsParallel(
+    Kokkos::View<size_t*> AidList<Dim>::getNumParticlesInOctantsParallel(
         const Container& octant_container) {
         size_t size_buff;
-        Kokkos::vector<size_t> weights;
+        Kokkos::View<size_t*> weights("weights_view", octant_container.size());
         if (world_rank == 0) {
             for (size_t rank = 1; rank < world_size; ++rank) {
                 // receive the size of the octants from rank
@@ -216,7 +216,7 @@ namespace ippl {
 
                 // no need to shrink, we only send what we need
                 if (weights.size() < size_buff) {
-                    weights.resize(size_buff);
+                    Kokkos::resize(weights, size_buff);
                 }
 
                 for (size_t i = 0; i < size_buff; ++i) {
@@ -229,7 +229,8 @@ namespace ippl {
 
             // calculate own weights
             size_buff = octant_container.size();
-            weights.resize(size_buff);  // we must shrink here, as we return wrong values if we dont
+            Kokkos::resize(weights,
+                           size_buff);  // we must shrink here, as we return wrong values if we dont
             for (size_t i = 0; i < size_buff; ++i) {
                 weights[i] = getNumParticlesInOctant(octant_container[i]);
             }
@@ -241,7 +242,6 @@ namespace ippl {
             // send the actual octants to rank 0
             Comm->send(*octant_container.data(), size_buff, 0, 0);
             // reserve space for the weights we will receive
-            weights.resize(size_buff);
             mpi::Status weights_status;
             Comm->recv(weights.data(), size_buff, 0, 0, weights_status);
         }

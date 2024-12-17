@@ -9,10 +9,6 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::build_tree(particle_t const& particles) {
         START_FUNC;
 
-        world_size = Comm->size();
-        world_rank = Comm->rank();  // TODO: move this to constructor, but then all tests need a
-                                    // main to init ippl
-
         this->aid_list_m.initialize(root_bounds_m, particles);
         auto [min_octant, max_octant] = this->aid_list_m.getMinReqOctants();
 

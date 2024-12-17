@@ -78,7 +78,7 @@ namespace ippl {
          * and '.size()'
          */
         template <typename Container>
-        Kokkos::vector<size_t> getNumParticlesInOctantsParallel(const Container& container);
+        Kokkos::View<size_t*> getNumParticlesInOctantsParallel(const Container& container);
 
         /**
          * @brief Returns the highest index s.t. octants(index-1) <= octant <= octants(index)

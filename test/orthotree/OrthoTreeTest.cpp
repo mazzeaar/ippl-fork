@@ -117,11 +117,20 @@ void run_experiment() {
     tree.setPrintStats(enable_stats);
 
     auto particles = initializeParticles<Dim>();
+    int a;
+    std::cin >> a;
 
+    auto begin = std::chrono::high_resolution_clock::now();
     if (run_parallel)
         tree.build_tree(particles);
     else
         tree.build_tree_naive(particles);
+
+    if (Comm->rank() == 0) {
+        auto end      = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cerr << "Duration: " << duration << "ms" << std::endl;
+    }
 }
 
 template <size_t Dim>

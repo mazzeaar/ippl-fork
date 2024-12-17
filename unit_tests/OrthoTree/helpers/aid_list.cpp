@@ -305,7 +305,7 @@ TEST(AidListTest, NumParticlesInOctantTest) {
         std::vector<morton_code> octants = {test_data.octant};
 
         // this has always size one, so we can just take the first element in the returning vector
-        const size_t calc_result = aid_list.getNumParticlesInOctantsParallel(octants).front();
+        const size_t calc_result = aid_list.getNumParticlesInOctantsParallel(octants)[0];
         EXPECT_EQ(test_data.expected_total_particles, calc_result)
             << "Rank " << Comm->rank() << " expected: " << test_data.expected_total_particles
             << ", but got: " << calc_result;
