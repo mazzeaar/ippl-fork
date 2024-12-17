@@ -13,6 +13,13 @@ namespace ippl {
         }
 
         template <typename T>
+        void Communicator::allgather(const T* input, T* output, int count) {
+            MPI_Datatype type = get_mpi_datatype<T>(*input);
+
+            MPI_Allgather(const_cast<T*>(input), count, type, output, count, type, *comm_m);
+        }
+
+        template <typename T>
         void Communicator::scatter(const T* input, T* output, int count, int root) {
             MPI_Datatype type = get_mpi_datatype<T>(*input);
 
