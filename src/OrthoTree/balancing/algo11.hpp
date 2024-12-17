@@ -27,15 +27,6 @@ namespace ippl {
         return result;
     }
 
-    template <typename... ViewTypes>
-    void appendViews(Kokkos::View<morton_code*>& destination, ViewTypes... views) {
-        auto result = concatenateViews(destination, views...);
-        Kokkos::View<morton_code*> temp("temp", result.extent(0));
-        Kokkos::deep_copy(temp, result);
-        Kokkos::resize(destination, temp.extent(0));
-        Kokkos::deep_copy(destination, temp);
-    }
-
     Kokkos::View<morton_code*> initialise_C_View(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> L_view) {
