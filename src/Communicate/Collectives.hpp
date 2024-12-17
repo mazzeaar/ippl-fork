@@ -6,6 +6,30 @@
 namespace ippl {
     namespace mpi {
         template <typename T>
+        void Communicator::sendrecv(const T* send_data, int send_count, int destination,
+                                    int send_tag, T* recv_data, int recv_count, int source,
+                                    int recv_tag) {
+            MPI_Datatype type = get_mpi_datatype<T>(*send_data);
+            MPI_Sendrecv(const_cast<T*>(send_data), send_count, type, destination, send_tag,
+                         recv_data, recv_count, type, source, recv_tag, *comm_m, MPI_STATUS_IGNORE);
+        }
+
+        template <typename T>
+        void Communicator::alltoall(const T* input, T* output, int count) {
+            MPI_Datatype type = get_mpi_datatype<T>(*input);
+            MPI_Alltoall(const_cast<T*>(input), count, type, output, count, type, *comm_m);
+        }
+
+        template <typename T>
+        void Communicator::alltoallv(const T* input, const int* send_counts,
+                                     const int* send_displacements, T* output,
+                                     const int* recv_counts, const int* recv_displacements) {
+            MPI_Datatype type = get_mpi_datatype<T>(*input);
+            MPI_Alltoallv(const_cast<T*>(input), send_counts, send_displacements, type, output,
+                          recv_counts, recv_displacements, type, *comm_m);
+        }
+
+        template <typename T>
         void Communicator::gather(const T* input, T* output, int count, int root) {
             MPI_Datatype type = get_mpi_datatype<T>(*input);
 
