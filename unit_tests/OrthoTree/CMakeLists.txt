@@ -45,6 +45,7 @@ add_test_with_gtest(parallel_construction_8 parallel_construction/full_test/8_ra
 
 add_test_with_gtest(complete_subtree balancing/algo10.cpp)
 add_test_with_gtest(ripple_prop balancing/algo09.cpp)
+add_test_with_gtest(balancing balancing/algo11.cpp)
 
 # vi: set et ts=4 sw=4 sts=4:
 # Local Variables:
