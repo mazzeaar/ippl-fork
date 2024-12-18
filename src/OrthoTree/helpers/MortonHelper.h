@@ -101,6 +101,17 @@ namespace ippl {
         inline morton_code get_parent(morton_code code) const;
 
         /**
+         * @brief Returns the code of this parent at depth
+         *
+         * @param code
+         *
+         * @param depth
+         *
+         * @return morton_code
+         */
+        inline morton_code get_parent_at_level(morton_code code, morton_code depth) const;
+
+        /**
          * @brief Returns a vector filled with the (2^Dim) children of a node, in ascending order
          *
          * @param code
