@@ -22,7 +22,7 @@ namespace ippl {
         size_t R_index     = 0;
         Kokkos::View<morton_code*> R_view("R_view", sorted_incomplete_tree_L.size() + R_base_size);
         // for l <- D_max to (L(N) + 1)
-        for (size_t depth = max_depth_m; depth >= 3; depth--) {
+        for (size_t depth = max_depth_m; depth >= 2; depth--) {
             Kokkos::View<std::vector<morton_code>*> T("T", W.size());
             // for each w in W
             std::for_each(
@@ -35,9 +35,13 @@ namespace ippl {
                     std::for_each(
                         search_keys.begin(), search_keys.end(),
                         [&, this](const morton_code current_key) {
-                            const auto neighbor_it =
+                            auto neighbor_it =
                                 std::lower_bound(W.data(), W.data() + W.size(), current_key);
-                            morton_code neighbor = *neighbor_it;
+                            if(neighbor_it == W.data() || neighbor_it == W.data()+W.size()){
+                                // TODO might want to do some more cleanup
+                                return;
+                            }
+                            morton_code neighbor = *(--neighbor_it);
                             size_t neighbor_idx  = neighbor_it - search_keys.data();
 
                             if (this->morton_helper.get_depth(neighbor) > depth - 1

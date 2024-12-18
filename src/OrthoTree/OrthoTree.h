@@ -5,6 +5,7 @@
 #include <Kokkos_Vector.hpp>
 #include <fstream>
 #include <unordered_set>
+#include <span>
 #include <vector>
 
 #include "OrthoTreeTypes.h"
