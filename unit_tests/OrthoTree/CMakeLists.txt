@@ -43,6 +43,7 @@ add_test_with_gtest(parallel_construction_4 parallel_construction/full_test/4_ra
 add_test_with_gtest(parallel_construction_8 parallel_construction/full_test/8_ranks.cpp)
 
 
+add_test_with_gtest(balance_subtree balancing/algo07.cpp)
 add_test_with_gtest(complete_subtree balancing/algo10.cpp)
 add_test_with_gtest(ripple_prop balancing/algo09.cpp)
 add_test_with_gtest(balancing balancing/algo11.cpp)
