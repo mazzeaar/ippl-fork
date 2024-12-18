@@ -12,6 +12,8 @@ namespace ippl {
     - UNCOMMENT THE INCLUSION OF THIS FILE IN ORTHO_TREE.HPP (BOTTOM)
     */
 
+    // For Optimisation: If Kokkos::resize is expensive, we might want to change the implementation of the R_view
+
     template <size_t Dim>
     inline Kokkos::View<morton_code*> OrthoTree<Dim>::algo9(
         Kokkos::View<morton_code*> sorted_incomplete_tree_L) {
@@ -54,7 +56,7 @@ namespace ippl {
             auto insert_into_R = [&](morton_code octant_a, Kokkos::View<morton_code*> T_view) {
                 auto complete_subtree_view = algo10(octant_a, T_view);
 
-                const size_t additional_octants = complete_subtree_view.size() + 1;
+                const size_t additional_octants = complete_subtree_view.size();
                 size_t remaining_space          = R_view.size() - R_index;
 
                 while (remaining_space <= additional_octants) {
