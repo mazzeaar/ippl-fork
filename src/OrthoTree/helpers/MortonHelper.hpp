@@ -79,7 +79,7 @@ namespace ippl {
         assert(code != morton_code(0) && "root has not parent");
 
         const morton_code code_depth             = get_depth(code);
-        assert(code_depth >= depth && "can't get a parent at a level finer than the current node")
+        assert(code_depth >= depth && "can't get a parent at a level finer than the current node");
 
         const morton_code parent_depth_bits = depth;
 
