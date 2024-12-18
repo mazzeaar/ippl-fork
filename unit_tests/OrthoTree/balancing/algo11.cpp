@@ -5,10 +5,8 @@
 
 using namespace ippl;
 
-/*
 template <size_t Dim>
-auto generateParticles(size_t num_particles_per_proc, const double min_bound, double max_bound,
-                       uint64_t seed) {
+auto generateParticles(size_t num_particles_per_proc, const double min_bound, double max_bound) {
     typedef ippl::ParticleSpatialLayout<double, Dim> playout_type;
     typedef ippl::OrthoTreeParticle<playout_type> bunch_type;
 
@@ -22,7 +20,7 @@ auto generateParticles(size_t num_particles_per_proc, const double min_bound, do
     typename bunch_type::particle_position_type::HostMirror R_host = bunch.R.getHostMirror();
     const double bounds_size                                       = max_bound - min_bound;
 
-    std::mt19937_64 eng(seed);
+    std::mt19937_64 eng;
     std::uniform_real_distribution<double> unif(min_bound, max_bound);
 
     // center of the bounding box
@@ -62,8 +60,8 @@ auto generateParticles(size_t num_particles_per_proc, const double min_bound, do
     bunch.update();
     return bunch;
 }
-*/
 
+/*
 template <size_t Dim>
 auto initializeRandom(size_t num_particles, double min_bounds, double max_bounds) {
     static_assert((Dim == 2 || Dim == 3) && "We only specialise for 2D and 3D!");
@@ -96,32 +94,34 @@ auto initializeRandom(size_t num_particles, double min_bounds, double max_bounds
     bunch.update();
     return bunch;
 }
-
+*/
 TEST(BalancingTest, TestTest) {
     static constexpr size_t Dim = 2;
-    const size_t max_depth      = 8;
-    const size_t max_particles  = 5;
-    const size_t n_particles    = 1000;
+    const size_t max_depth      = 10;
+    const size_t max_particles  = 20;
+    const size_t n_particles    = 5000;
 
     BoundingBox<Dim> bounds({0.0, 0.0}, {1.0, 1.0});
     OrthoTree<Dim> tree(max_depth, max_particles, bounds);
 
     Morton<Dim> morton_helper(max_depth);
 
-    // auto particles  = generateParticles<Dim>(n_particles, 0.0, 1.0);
-    auto particles  = initializeRandom<Dim>(n_particles, 0.0, 1.0);
+    auto particles = generateParticles<Dim>(n_particles, 0.0, 1.0);
+    // auto particles  = initializeRandom<Dim>(n_particles, 0.0, 1.0);
     auto built_tree = tree.build_tree_naive(particles);
-
+    Comm->barrier();
     tree.setVisualisation(true);
-    std::cerr << "HERE!!!!!" << std::endl;
-    // auto res = tree.algo11(built_tree);
+    std::cerr << "starting algo11" << std::endl;
+    auto res = tree.algo11(built_tree);
 
+    /*
     if (Comm->rank() != 0) {
         return;
     }
-
     auto res = tree.algo7(0, built_tree);
-    //  EXPECT_EQ(res.size(), 28);
+    */
+
+    //   EXPECT_EQ(res.size(), 28);
 
     // output to test
     Kokkos::resize(res, res.size() + 1);

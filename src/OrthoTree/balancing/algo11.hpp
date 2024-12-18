@@ -128,8 +128,8 @@ namespace ippl {
                                                       [&](const morton_code octant_B) {
                                                           // set_A = {z, ancestors of z}
                                                           // true if: B is in set_A
-                                                          return (octant_Z == octant_B)
-                                                                 || morton_helper.is_ancestor(
+                                                          return (octant_Z != octant_B)
+                                                                 && !morton_helper.is_ancestor(
                                                                      octant_Z, octant_B);
                                                       });
                                });
@@ -320,9 +320,13 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(
         Kokkos::View<morton_code*> distributed_complete_tree_L) {
         // B = algo4
-        Kokkos::View<morton_code*> B_view =
-            block_partition(distributed_complete_tree_L(0),
-                            distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
+        const morton_code min_oct =
+            morton_helper.get_deepest_first_descendant(distributed_complete_tree_L(0));
+        const morton_code max_oct =
+            morton_helper.get_deepest_last_descendant(distributed_complete_tree_L.size() - 1);
+
+        Kokkos::View<morton_code*> B_view = block_partition(min_oct, max_oct);
+        std::cerr << "SURVIVED BLOCK_PARTITION" << std::endl;
 
         // C = algo7(B, L)
         auto C_view = initialise_C_View(this->morton_helper, B_view, distributed_complete_tree_L);
