@@ -63,6 +63,7 @@ auto generateParticles(size_t num_particles_per_proc, const double min_bound, do
 }
 
 TEST(RipplePropagation, TestTest) {
+    /*
     static constexpr size_t Dim = 2;
     const size_t max_depth      = 10;
     const size_t max_particles  = 50;
@@ -79,11 +80,32 @@ TEST(RipplePropagation, TestTest) {
 
     std::cerr << "HERE!!!!!" << std::endl;
     auto res = tree.algo9(built_tree);
+    */
+    constexpr size_t Dim = 2;
+    size_t max_depth = 3;
+    OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0}, real_coordinate_template<Dim>{1, 1}));
+    Morton<Dim> morton(max_depth);
+
+    morton_code root = 0;
+
+    Kokkos::View<morton_code*> tree_view("tree_view", 10);
+    tree_view(0) = morton.encode({0, 0}, 2);
+    tree_view(1) = morton.encode({2, 0}, 2);
+    tree_view(2) = morton.encode({0, 2}, 2);
+    tree_view(3) = morton.encode({2, 2}, 3);
+    tree_view(4) = morton.encode({2, 3}, 3);
+    tree_view(5) = morton.encode({3, 2}, 3);
+    tree_view(6) = morton.encode({3, 3}, 3);
+    tree_view(7) = morton.encode({4, 4}, 1);
+    tree_view(8) = morton.encode({4, 0}, 1);
+    tree_view(9) = morton.encode({0, 4}, 1);
+
+    auto res = tree.algo9(tree_view);
 
     // EXPECT_EQ(res.size(), 28);
 
     // output to test
-    tree.particles_to_file(particles);
+    //tree.particles_to_file(particles);
     tree.octants_to_file(res);
 }
 
