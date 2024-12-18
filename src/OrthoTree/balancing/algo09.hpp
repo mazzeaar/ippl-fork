@@ -38,16 +38,15 @@ namespace ippl {
                             auto neighbor_it =
                                 std::lower_bound(W.data(), W.data() + W.size(), current_key);
                             if(neighbor_it == W.data() || neighbor_it == W.data()+W.size()){
-                                // TODO might want to do some more cleanup
                                 return;
                             }
                             morton_code neighbor = *(--neighbor_it);
-                            size_t neighbor_idx  = neighbor_it - search_keys.data();
+                            size_t neighbor_idx  = neighbor_it - W.data();
 
-                            if (this->morton_helper.get_depth(neighbor) > depth - 1
+                            if (this->morton_helper.get_depth(neighbor) < depth - 1
                                 && this->morton_helper.is_ancestor(current_key, neighbor)) {
                                 T(neighbor_idx)
-                                    .push_back(this->morton_helper.get_parent(current_key));
+                                    .push_back(this->morton_helper.get_parent_at_level(current_key, depth - 1));
                             }
                         });
                 });
