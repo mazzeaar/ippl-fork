@@ -77,8 +77,8 @@ TEST(BalancingTest, TestTest) {
     auto built_tree = tree.build_tree(particles);
     tree.setVisualisation(true);
     std::cerr << "HERE!!!!!" << std::endl;
-    auto res = tree.algo11(built_tree);
-
+    // auto res = tree.algo11(built_tree);
+    auto res = tree.algo7(0, built_tree);
     // EXPECT_EQ(res.size(), 28);
 
     // output to test
