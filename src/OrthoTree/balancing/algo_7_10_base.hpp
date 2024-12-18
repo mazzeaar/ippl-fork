@@ -74,7 +74,7 @@ namespace ippl {
                 const size_t siblings_size = siblings.size();
 
                 if (R_index + siblings_size >= R_view.size()) {
-                    Kokkos::resize(R_view, 2 * siblings_size);
+                    Kokkos::resize(R_view, R_view.size() + (2 * siblings_size));
                 }
 
                 for (morton_code sibling : siblings) {
