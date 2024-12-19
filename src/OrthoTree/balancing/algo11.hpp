@@ -323,12 +323,11 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(
         Kokkos::View<morton_code*> distributed_complete_tree_L) {
         // B = algo4
-        const morton_code min_oct =
-            morton_helper.get_deepest_first_descendant(distributed_complete_tree_L(0));
-        const morton_code max_oct =
-            morton_helper.get_deepest_last_descendant(distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
+        const morton_code min_oct = distributed_complete_tree_L(0);
+        const morton_code max_oct = distributed_complete_tree_L(distributed_complete_tree_L.size() - 1);
+        std::cerr << "Min_oct: " << min_oct << " Max_oct: " << max_oct << endl;
 
-        Kokkos::View<morton_code*> B_view = block_partition(distributed_complete_tree_L(0), distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
+        Kokkos::View<morton_code*> B_view = block_partition(min_oct, max_oct);
         std::cerr << "SURVIVED BLOCK_PARTITION" << std::endl;
 
         // C = algo7(B, L)
