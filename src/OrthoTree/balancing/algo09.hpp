@@ -50,8 +50,6 @@ namespace ippl {
                             morton_code neighbor = *(--neighbor_it);
                             size_t neighbor_idx  = neighbor_it - W.data();
 
-                            std::cerr <<  (this->morton_helper.get_depth(neighbor) < depth - 1) << std::endl;
-                            std::cerr << (this->morton_helper.is_ancestor(current_key, neighbor)) << std::endl;
                             if (this->morton_helper.get_depth(neighbor) < depth - 1
                                 && this->morton_helper.is_ancestor(current_key, neighbor)) {
                                 T(neighbor_idx)
