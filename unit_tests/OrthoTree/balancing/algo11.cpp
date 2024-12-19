@@ -112,6 +112,7 @@ TEST(BalancingTest, TestTest) {
     Comm->barrier();
     tree.setVisualisation(true);
     std::cerr << "starting algo11" << std::endl;
+    std::sort(built_tree.data(), built_tree.data()+built_tree.size());
     auto res = tree.algo11(built_tree);
 
     /*

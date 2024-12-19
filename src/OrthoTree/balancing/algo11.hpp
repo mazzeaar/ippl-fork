@@ -41,6 +41,7 @@ namespace ippl {
         return count();
     }
 
+    // Why not just use algo7?? Is this even correct?!? TODO
     Kokkos::View<morton_code*> initialise_C_View(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> L_view) {
@@ -108,14 +109,15 @@ namespace ippl {
                 const auto octant_X = C_view(i);
 
                 if (should_insert(octant_X)) {
-                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1);
+                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1); // TODO Might be buggy, depending on pre- or post-increment
                     D_view(current_index) = octant_X;
                 }
             });
 
         return D_view;
     }
-
+    // Why not just initialize the G_View with a fairly high number of memory, add more if necessary and fit to size in the end by counting when you insert an element
+    // that wy you dont have to find out which octants to insert twice TODO
     Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> F_view) {
@@ -326,7 +328,7 @@ namespace ippl {
         const morton_code max_oct =
             morton_helper.get_deepest_last_descendant(distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
 
-        Kokkos::View<morton_code*> B_view = block_partition(min_oct, max_oct);
+        Kokkos::View<morton_code*> B_view = block_partition(distributed_complete_tree_L(0), distributed_complete_tree_L(distributed_complete_tree_L.size() - 1));
         std::cerr << "SURVIVED BLOCK_PARTITION" << std::endl;
 
         // C = algo7(B, L)
@@ -336,6 +338,7 @@ namespace ippl {
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view);
 
         // ripple propagation
+        // D_view must be sorted here TODO possible bug
         auto S_view = algo9(D_view);
         auto F_view = linearise_octants(concatenateViews(S_view, C_view));
 
@@ -363,6 +366,7 @@ namespace ippl {
                     continue;
                 }
 
+                // I don't think this works, the condition is just gonna be false TODO
                 for (size_t i = B_glob_rank_offsets(rank);
                      (i < B_glob_view.size()) && (i < B_glob_rank_offsets(rank)); ++i) {
                     const morton_code octant_B_glob = B_glob_view(i);
@@ -378,6 +382,7 @@ namespace ippl {
 
         Kokkos::View<morton_code*> T_view = communicate_octants(data_to_send1);
 
+        // Couldn't you just check if search_octant is in data_to_send1[i] ? TODO
         auto get_rank = [&B_glob_view, B_glob_rank_offsets](const morton_code search_octant) {
             for (size_t rank = 0; rank < Comm->size(); ++rank) {
                 for (size_t i = B_glob_rank_offsets(rank);
