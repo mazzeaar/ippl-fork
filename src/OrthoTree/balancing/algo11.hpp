@@ -45,32 +45,35 @@ namespace ippl {
     Kokkos::View<morton_code*> initialise_C_View(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> L_view) {
-        Kokkos::View<size_t> count("count");
-        Kokkos::parallel_for(
-            "CountValidDescendants", B_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                morton_code octant_B = B_view(i);
-                size_t local_count   = 0;
-                for (size_t j = 0; j < L_view.extent(0); ++j) {
-                    const morton_code octant_L = L_view(j);
-                    if (morton_helper.is_descendant(octant_L, octant_B)) {
-                        ++local_count;
-                    }
-                }
-                Kokkos::atomic_add(&count(), local_count);
+        Kokkos::View<morton_code*> C_view("C_view", 0);
+
+        std::for_each(
+            B_view.data(), B_view.data() + B_view.size(), [&, this](const morton_code octant_B) {
+                Kokkos::View<size_t> count("count");
+
+                // this can be done much faster with lower+upper bounds later on
+                Kokkos::parallel_for(
+                    "CountValidDescendants", L_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                        const morton_code octant_L = L_view(i);
+                        if (morton_helper.is_descendant(octant_L, octant_B)) {
+                            Kokkos::atomic_add(&count(), 1);
+                        }
+                    });
+
+                Kokkos::View<morton_code*> Temp_view("Temp_view", count());
+
+                size_t index = 0;
+                std::for_each(L_view.data(), L_view.data() + L_view.size(),
+                              [&, this](const morton_code octant_L) {
+                                  if (morton_helper.is_descendant(octant_L, octant_B)) {
+                                      Temp_view(index) = octant_L;
+                                      ++index;
+                                  }
+                              });
+
+                auto algo7_view = algo7(octant_B, Temp_view);
+                concatenateViews(C_view, algo7_view);
             });
-
-        Kokkos::View<morton_code*> C_view("C_view", count());
-
-        size_t index = 0;
-        for (size_t j = 0; j < B_view.extent(0); ++j) {
-            morton_code octant_B = B_view(j);
-            for (size_t i = 0; i < L_view.extent(0); ++i) {
-                if (morton_helper.is_descendant(L_view(i), octant_B)) {
-                    C_view(index) = L_view(i);
-                    index++;
-                }
-            }
-        }
 
         return C_view;
     }
