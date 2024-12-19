@@ -1,4 +1,5 @@
 #include "../OrthoTree.h"
+#include <functional>
 
 /*
 - WRITE TESTS FOR THE FUNCTION
@@ -7,7 +8,11 @@
 namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::block_partition(morton_code min_octant,
-                                                               morton_code max_octant) {
+                                                               morton_code max_octant,
+                                                               std::function<Kokkos::View<size_t*>(Kokkos::View<morton_code*>)> weight_function) {
+        logger.on(true);
+        logger.setOutputLevel(1);
+        logger << level1 << "starting algo4" << endl;
         Kokkos::View<morton_code*> T = complete_region(min_octant, max_octant);
 
         // the lowest level is actually the 'highest' (closest to root) node in our tree
@@ -35,7 +40,10 @@ namespace ippl {
 
         Kokkos::View<morton_code*> G = complete_tree(C);
 
-        Kokkos::View<size_t*> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
+        logger << level1 << "Algo3 ok" << endl;
+        logger.on(false);
+        logger.setOutputLevel(0);
+        Kokkos::View<size_t*> weights      = weight_function(G);
         Kokkos::View<morton_code*> octants = partition(G, weights);
 
         morton_code new_min_octant = octants[0];
