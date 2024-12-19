@@ -2,8 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-
-# FUNCS
+import itertools
 
 def read_data_for_all_processors(data_folder):
     processor_data = []
@@ -96,15 +95,23 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-def draw_bounds(ax, coord_min, coord_max, morton_code=None, color='blue', alpha=0.3, fill=True):
-    line_width = 1
+def draw_bounds(ax, coord_min, coord_max, morton_code=None, color='blue', alpha=0.3, fill=True, border_width=1.5):
+    """
+    Draw bounding boxes for octants in either 2D or 3D, with proper border width and optional fill.
+    """
     if len(coord_min) == 2:  # 2D case
         x_min, y_min = coord_min
         x_max, y_max = coord_max
-        rect = plt.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, color=color, alpha=alpha, 
-                             fill=fill, linewidth=line_width)
-        ax.add_patch(rect)
-        return rect, f"Octant ID: {morton_code}\nMin: {coord_min}\nMax: {coord_max}"
+        # Draw filled rectangle first (optional)
+        if fill:
+            rect = plt.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, color=color, alpha=alpha)
+            ax.add_patch(rect)
+        # Overlay the border with proper width
+        border_rect = plt.Rectangle(
+            (x_min, y_min), x_max - x_min, y_max - y_min, fill=False, edgecolor=color, linewidth=border_width
+        )
+        ax.add_patch(border_rect)
+        return border_rect, f"Octant ID: {morton_code}\nMin: {coord_min}\nMax: {coord_max}"
     
     elif len(coord_min) == 3:  # 3D case
         x_min, y_min, z_min = coord_min
@@ -120,24 +127,48 @@ def draw_bounds(ax, coord_min, coord_max, morton_code=None, color='blue', alpha=
         ]
         if fill:
             # Use Poly3DCollection to fill the faces of the 3D box
-            poly3d_collection = Poly3DCollection(vertices, color=color, alpha=alpha, linewidths=line_width, edgecolors=color)
+            poly3d_collection = Poly3DCollection(vertices, color=color, alpha=alpha, linewidths=border_width, edgecolors=color)
             ax.add_collection3d(poly3d_collection)
-            return poly3d_collection, f"Octant ID: {morton_code}\nMin: {coord_min}\nMax: {coord_max}"
-        else:
-            # Draw the bounding lines if not filled
-            lines = []
-            lines += ax.plot([x_min, x_max, x_max, x_min, x_min], [y_min, y_min, y_max, y_max, y_min], 
-                             [z_min, z_min, z_min, z_min, z_min], color=color, alpha=alpha, linewidth=line_width)
-            lines += ax.plot([x_min, x_max, x_max, x_min, x_min], [y_min, y_min, y_max, y_max, y_min], 
-                             [z_max, z_max, z_max, z_max, z_max], color=color, alpha=alpha, linewidth=line_width)
-            for i in range(2):
-                lines += ax.plot([x_min, x_min], [y_min, y_min], [z_min, z_max], color=color, alpha=alpha, linewidth=line_width)
-                lines += ax.plot([x_max, x_max], [y_min, y_min], [z_min, z_max], color=color, alpha=alpha, linewidth=line_width)
-                lines += ax.plot([x_max, x_max], [y_max, y_max], [z_min, z_max], color=color, alpha=alpha, linewidth=line_width)
-                lines += ax.plot([x_min, x_min], [y_max, y_max], [z_min, z_max], color=color, alpha=alpha, linewidth=line_width)
-            return lines[0], f"Octant ID: {morton_code}\nMin: {coord_min}\nMax: {coord_max}"
+        # Draw edges with proper width if not filled
+        for face in vertices:
+            ax.plot(*zip(*face), color=color, linewidth=border_width)
+        return None, f"Octant ID: {morton_code}\nMin: {coord_min}\nMax: {coord_max}"
 
-def plot_all_processors_in_subplots(data_folder):
+
+def plot_octants(ax, octants, color, fill=True, alpha=0.1, border_color="black", border_width=1.0):
+    """
+    Plot octants for a single processor, with distinct borders and optional fill.
+    """
+    for octant in octants:
+        # Draw filled regions first (optional)
+        if fill:
+            draw_bounds(ax, octant["coord_min"], octant["coord_max"], morton_code=octant["morton_code"], 
+                        color=color, alpha=alpha, fill=True, border_width=border_width)
+        
+        # Overlay the borders to ensure they are visible
+        draw_bounds(ax, octant["coord_min"], octant["coord_max"], morton_code=octant["morton_code"], 
+                    color=border_color, alpha=1.0, fill=False, border_width=border_width)
+
+
+def plot_particles(ax, particles, dim, color, particle_size=0.05):
+    """
+    Plot particles for a single processor.
+    """
+    if dim == 2:
+        x_vals = [particle["coord"][0] for particle in particles]
+        y_vals = [particle["coord"][1] for particle in particles]
+        ax.scatter(x_vals, y_vals, color=color, s=particle_size)
+    elif dim == 3:
+        x_vals = [particle["coord"][0] for particle in particles]
+        y_vals = [particle["coord"][1] for particle in particles]
+        z_vals = [particle["coord"][2] for particle in particles]
+        ax.scatter(x_vals, y_vals, z_vals, color=color, s=particle_size)
+
+def plot_all_processors_in_subplots(data_folder, should_plot_particles=True, show_stats=True, title=None, max_depth=None, max_particles_per_octant=None):
+    """
+    Generate subplots for each processor, including optional statistics.
+    Display overarching statistics at the top of the plot.
+    """
     processor_data = read_data_for_all_processors(data_folder)
     num_processors = len(processor_data)
     cols = 2  # Define columns for the grid layout
@@ -145,83 +176,129 @@ def plot_all_processors_in_subplots(data_folder):
 
     fig = plt.figure(figsize=(10, 5 * rows))
 
+    # Stats variables
+    total_particles = sum(len(particles) for _, particles, _ in processor_data)
+    total_octants = sum(len(octants) for octants, _, _ in processor_data)
+
     for i, (octants, particles, dim) in enumerate(processor_data):
         print(f"Processor {i}: {len(octants)} octants, {len(particles)} particles, Dimension: {dim}D")  # Debug output
 
         ax = fig.add_subplot(rows, cols, i + 1, projection='3d' if dim == 3 else None)
         ax.set_title(f"Processor {i}")
-        
-        # Draw octants
-        for octant in octants:
-            # Pass fill=True here to ensure the rectangles are filled
-            draw_bounds(ax, octant["coord_min"], octant["coord_max"], morton_code=octant["morton_code"], color='blue', alpha=0.2, fill=False)
 
-        particle_size = 0.05  # Increased size for visibility
-        # Draw particles
-        if dim == 2:
-            x_vals = [particle["coord"][0] for particle in particles]
-            y_vals = [particle["coord"][1] for particle in particles]
-            ax.scatter(x_vals, y_vals, color='red', s=particle_size)
-        elif dim == 3:
-            x_vals = [particle["coord"][0] for particle in particles]
-            y_vals = [particle["coord"][1] for particle in particles]
-            z_vals = [particle["coord"][2] for particle in particles]
-            ax.scatter(x_vals, y_vals, z_vals, color='red', s=particle_size)
+        # Plot octants and particles
+        plot_octants(ax, octants, color="blue", fill=False, alpha=0.1, border_color="black", border_width=0.5)
+        if should_plot_particles:
+            plot_particles(ax, particles, dim, color="red", particle_size=1)
 
-        # Set axis labels
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        if dim == 3:
-            ax.set_zlabel("Z")
+        # Add stats per processor if enabled
+        if show_stats:
+            stats_text = f"Octants: {len(octants)}"
+            props = dict(boxstyle='round', facecolor='white', alpha=0.8)
+            ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=10, verticalalignment='top', bbox=props)
 
-    plt.tight_layout()
+        # Configure plot axes
+        setup_plot(ax, dim)
+
+    # Add overarching stats at the top of the figure
+    if show_stats:
+        overall_stats_text = f"Total Particles: {total_particles}\nTotal Octants: {total_octants}"
+        if max_depth is not None:
+            overall_stats_text += f"\nMax Depth: {max_depth}"
+        if max_particles_per_octant is not None:
+            overall_stats_text += f"\nMax Particles/Octant: {max_particles_per_octant}"
+
+        # Add overarching stats as a super title
+        if title:
+            overall_title = f"{title}\n{overall_stats_text}"
+        else:
+            overall_title = overall_stats_text
+
+        fig.suptitle(overall_title, fontsize=14, fontweight='bold', y=0.98)
+
+    # Adjust layout for the subplots
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to make space for the overarching title
     plt.show()
 
-import itertools
 
-def plot_combined_processors(data_folder):
-    processor_data = read_data_for_all_processors(data_folder)
-    dim = 2  # Default to 2D in case no particles are found
-
-    # Define a color cycle for different processors
-    colors = itertools.cycle(['blue', 'green', 'red', 'purple', 'orange', 'brown', 'pink', 'gray', 'olive', 'cyan'])
-    
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection='3d' if dim == 3 else None)
-    ax.set_title("Combined Data from All Processors")
-    
-    for i, (octants, particles, processor_dim) in enumerate(processor_data):
-        color = next(colors)  # Get the next color for this processor
-        dim = max(dim, processor_dim)  # Update to 3D if any processor has 3D data
-
-        # Draw octants with the processor-specific color
-        for octant in octants:
-            draw_bounds(ax, octant["coord_min"], octant["coord_max"], morton_code=octant["morton_code"], fill=False)
-
-        # Draw particles with the processor-specific color
-        particle_size = 0.05  # Adjust size if needed
-        if dim == 2:
-            x_vals = [particle["coord"][0] for particle in particles]
-            y_vals = [particle["coord"][1] for particle in particles]
-            ax.scatter(x_vals, y_vals, color=color, s=particle_size, label=f"Processor {i}")
-        elif dim == 3:
-            x_vals = [particle["coord"][0] for particle in particles]
-            y_vals = [particle["coord"][1] for particle in particles]
-            z_vals = [particle["coord"][2] for particle in particles]
-            ax.scatter(x_vals, y_vals, z_vals, color=color, s=particle_size, label=f"Processor {i}")
-
-    # Set axis labels
+def setup_plot(ax, dim):
+    """
+    Configure the plot's axes and labels.
+    """
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     if dim == 3:
         ax.set_zlabel("Z")
 
-    # Add a legend to distinguish processors by color
-    #ax.legend(loc="upper right")
+def plot_combined_processors(data_folder, should_plot_particles=False, show_stats=True, title=None, max_depth=None, max_particles_per_octant=None):
+    """
+    Combine data from all processors and plot them in a single plot with optional statistics.
+    """
+    processor_data = read_data_for_all_processors(data_folder)
+    dim = 2  # Default to 2D if no particles are found
+
+    # Define a color cycle for different processors
+    colors = itertools.cycle(['blue', 'green', 'red', 'purple', 'orange', 
+                               'brown', 'pink', 'gray', 'olive', 'cyan'])
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d' if dim == 3 else None)
+    
+    if title is not None:
+        ax.set_title(title)
+    else:
+        ax.set_title("Combined Data from All Processors")
+
+    # Stats variables
+    total_particles = 0
+    total_octants = 0
+    rank_stats = []
+
+    # Keep track of colors and labels for the legend
+    legend_handles = []
+
+    for i, (octants, particles, processor_dim) in enumerate(processor_data):
+        color = next(colors)  # Get the next color for this processor
+        dim = max(dim, processor_dim)  # Update to 3D if any processor has 3D data
+
+        # Plot octants and particles
+        plot_octants(ax, octants, color=color, fill=True, alpha=0.25, border_color="black", border_width=0.5)
+        if should_plot_particles:
+            plot_particles(ax, particles, dim, color=color, particle_size=10)
+
+        # Update stats
+        num_octants = len(octants)
+        num_particles = len(particles)
+        total_octants += num_octants
+        total_particles += num_particles
+        rank_stats.append((i, num_octants, num_particles))
+
+        # Add a legend handle for this processor
+        legend_handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, 
+                                         markersize=10, label=f"Processor {i}"))
+
+    setup_plot(ax, dim)
+
+    # Add the legend
+    ax.legend(handles=legend_handles, loc="upper right")
+
+    # Display stats if enabled
+    if show_stats:
+        stats_text = f"Total Particles: {total_particles}\nTotal Octants: {total_octants}\n"
+        if max_depth is not None:
+            stats_text += f"Max Depth: {max_depth}\n"
+        if max_particles_per_octant is not None:
+            stats_text += f"Max Particles/Octant: {max_particles_per_octant}\n"
+        stats_text += "\nPer Rank Stats:\n"
+        for rank, num_octants, num_particles in rank_stats:
+            stats_text += f"Rank {rank}: {num_particles} particles, {num_octants} octants\n"
+
+        # Add stats as an annotation box
+        props = dict(boxstyle='round', facecolor='white', alpha=0.8)
+        ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, fontsize=10, verticalalignment='top', bbox=props)
 
     plt.tight_layout()
     plt.show()
-
 
 #########################################
 #               OUTPUT                  #
@@ -231,13 +308,20 @@ def plot_combined_processors(data_folder):
 
 data_folder = "output"
 
+# those have to be set manualy by you, else we dont print them
+show_stats=True
+
+title=None
+max_depth=None
+max_particles_per_octant=None
+
 """
 This will generate one plot, where each processor will be colored differently. (not that usefull)
 """
-#plot_combined_processors(data_folder)
+plot_combined_processors(data_folder=data_folder, show_stats=show_stats, title=title, max_depth=max_depth, max_particles_per_octant=max_particles_per_octant, should_plot_particles=False)
 
 """
 This generates one plot per processor.
 """
-plot_all_processors_in_subplots(data_folder)
+#plot_all_processors_in_subplots(data_folder=data_folder, should_plot_particles=True, show_stats=show_stats, title=title, max_depth=max_depth, max_particles_per_octant=max_particles_per_octant)
 

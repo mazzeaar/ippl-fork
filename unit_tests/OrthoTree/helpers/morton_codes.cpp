@@ -213,6 +213,18 @@ TEST(MortonCodesTest, GetParentTest) {
   EXPECT_EQ(parent, expected);
 }
 
+TEST(MortonCodesTest, GetParentAtLevelTest) {
+    static constexpr size_t Dim = 3;
+    const size_t max_depth = 8;
+    Morton<Dim> morton(max_depth);
+
+    morton_code child = morton.encode({127, 123, 154}, 8);
+    size_t level = 3;
+    morton_code parent = morton.get_parent_at_level(child, level);
+    morton_code expected = morton.encode({96, 96, 128}, 3);
+    EXPECT_EQ(parent, expected);
+}
+
 TEST(MortonCodesTest, GetChildIndexTest) {
   static constexpr size_t Dim = 3;
   const size_t max_depth = 8;
