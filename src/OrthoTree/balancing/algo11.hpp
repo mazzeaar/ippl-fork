@@ -117,6 +117,14 @@ namespace ippl {
                 }
             });
 
+        if (!std::is_sorted(D_view.data(), D_view.data() + D_view.size())) {
+            std::cerr << "D_VIEW IS NOT SORTED IN " << __func__
+                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
+                      << std::endl;
+            std::sort(D_view.data(), D_view.data() + D_view.size());
+            // throw std::runtime_error("NOT SORTED IN initialise_D_view");
+        }
+
         return D_view;
     }
     // Why not just initialize the G_View with a fairly high number of memory, add more if necessary and fit to size in the end by counting when you insert an element
@@ -152,6 +160,14 @@ namespace ippl {
                     G_view(current_index) = octant_X;
                 }
             });
+
+        if (!std::is_sorted(G_view.data(), G_view.data() + G_view.size())) {
+            std::cerr << "G_VIEW IS NOT SORTED IN " << __func__
+                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
+                      << std::endl;
+            std::sort(G_view.data(), G_view.data() + G_view.size());
+            // throw std::runtime_error("NOT SORTED IN initialise_G_view");
+        }
 
         return G_view;
     }
@@ -199,6 +215,14 @@ namespace ippl {
                     R_view(current_index) = octant_X;
                 }
             });
+
+        if (!std::is_sorted(R_view.data(), R_view.data() + R_view.size())) {
+            std::cerr << "R_VIEW IS NOT SORTED IN " << __func__
+                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
+                      << std::endl;
+            std::sort(R_view.data(), R_view.data() + R_view.size());
+            // throw std::runtime_error("NOT SORTED IN initialise_R_view");
+        }
 
         return R_view;
     }
