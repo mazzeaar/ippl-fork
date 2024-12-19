@@ -74,6 +74,27 @@ namespace ippl {
     }
 
     template <size_t Dim>
+    inline morton_code Morton<Dim>::get_parent_at_level(morton_code code, morton_code depth) const
+    {
+        assert(code != morton_code(0) && "root has not parent");
+
+        const morton_code code_depth             = get_depth(code);
+        assert(code_depth >= depth && "can't get a parent at a level finer than the current node");
+
+        const morton_code parent_depth_bits = depth;
+
+        // the first part removes irellevant bits (basically only keeping bits that ALL descendants of a code share with its ancestor)
+        // the last part removes the depth bits
+        const morton_code cur_shift = (Dim * (max_depth - depth)) + depth_mask_shift;
+
+        // remove all irrelevant bits
+        const morton_code parent_code = code >> cur_shift;
+
+        // shift back, resulting in zeros, add parent depth information back in
+        return (parent_code << cur_shift) | parent_depth_bits;
+    }
+
+    template <size_t Dim>
     inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const
     {
         /*
