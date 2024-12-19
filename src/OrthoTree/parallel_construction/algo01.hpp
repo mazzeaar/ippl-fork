@@ -12,7 +12,7 @@ namespace ippl {
         this->aid_list_m.initialize(root_bounds_m, particles);
         auto [min_octant, max_octant] = this->aid_list_m.getMinReqOctants();
 
-        auto octants = block_partition(min_octant, max_octant);
+        auto octants = block_partition(min_octant, max_octant, [&, this] (Kokkos::View<morton_code*> G) ->Kokkos::View<size_t*> { return this->aid_list_m.getNumParticlesInOctantsParallel(G); });
 
         particles_to_file(particles);  // runs much faster if we print here instead of below lol
 
