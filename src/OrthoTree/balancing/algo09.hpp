@@ -15,6 +15,16 @@ namespace ippl {
     template <size_t Dim>
     inline Kokkos::View<morton_code*> OrthoTree<Dim>::algo9(
         Kokkos::View<morton_code*> sorted_incomplete_tree_L) {
+
+        // Enforce that L is sorted
+        if (!std::is_sorted(
+            sorted_incomplete_tree_L.data(), 
+            sorted_incomplete_tree_L.data() + sorted_incomplete_tree_L.size())) 
+        {
+            logger << "Input data is not sorted in algo9" << endl;
+            throw std::runtime_error("data not sorted in algo9");
+        }
+
         // W <- L balanced_incomplete_tree
         Kokkos::View<morton_code*> W = sorted_incomplete_tree_L;
 
