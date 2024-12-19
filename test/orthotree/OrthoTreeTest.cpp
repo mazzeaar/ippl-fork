@@ -16,14 +16,143 @@
 #include "ArgParser.h"
 #include "OrthoTree/OrthoTree.h"
 #include "OrthoTree/helpers/BoundingBox.h"
+#include "Random/Distribution.h"
+#include "Random/InverseTransformSampling.h"
+#include "Random/NormalDistribution.h"
+#include "Random/Randn.h"
 
 using namespace ippl;
+
+struct CustomDistributionFunctions {
+    struct CDF {
+        KOKKOS_INLINE_FUNCTION double operator()(double x, unsigned int d,
+                                                 const double* params_p) const {
+            return x
+                   + (params_p[d * 2 + 0] / params_p[d * 2 + 1])
+                         * Kokkos::sin(params_p[d * 2 + 1] * x);
+        }
+    };
+
+    struct PDF {
+        KOKKOS_INLINE_FUNCTION double operator()(double x, unsigned int d,
+                                                 double const* params_p) const {
+            return 1.0 + params_p[d * 2 + 0] * Kokkos::cos(params_p[d * 2 + 1] * x);
+        }
+    };
+
+    struct Estimate {
+        KOKKOS_INLINE_FUNCTION double operator()(double u, unsigned int d,
+                                                 double const* params_p) const {
+            return u + params_p[d] * 0.;
+        }
+    };
+};
 
 template <size_t Dim, typename ParticlePositioins>
 void initializeSpiral(ParticlePositioins& particle_positions);
 
 template <size_t Dim, typename ParticlePositioins>
 void initializeRandom(ParticlePositioins& particle_positions);
+
+template <size_t Dim, typename ParticlePositions>
+auto initializeGaussian(ParticlePositions& particle_positions) {
+    static_assert((Dim == 2 || Dim == 3)
+                  && "Gaussian distribution is only supported for 2D and 3D!");
+
+    const size_t num_particles = ArgParser::get<size_t>("num_particles");
+    const double mean =
+        (ArgParser::get<double>("min_bounds") + ArgParser::get<double>("max_bounds")) / 2;
+    const double std_dev =
+        (ArgParser::get<double>("max_bounds") - ArgParser::get<double>("min_bounds")) / 6;
+    const double min_bounds = ArgParser::get<double>("min_bounds");
+    const double max_bounds = ArgParser::get<double>("max_bounds");
+    const size_t seed       = ArgParser::get<size_t>("seed");
+
+    std::mt19937_64 eng(seed);
+    std::normal_distribution<double> norm(mean, std_dev);
+
+    for (unsigned int i = 0; i < num_particles; ++i) {
+        if constexpr (Dim == 2) {
+            double x              = std::clamp(norm(eng), min_bounds, max_bounds);
+            double y              = std::clamp(norm(eng), min_bounds, max_bounds);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y};
+        } else if constexpr (Dim == 3) {
+            double x              = std::clamp(norm(eng), min_bounds, max_bounds);
+            double y              = std::clamp(norm(eng), min_bounds, max_bounds);
+            double z              = std::clamp(norm(eng), min_bounds, max_bounds);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y, z};
+        }
+    }
+
+    return particle_positions;
+}
+
+template <size_t Dim, typename ParticlePositions>
+auto initializeShell(ParticlePositions& particle_positions) {
+    static_assert((Dim == 2 || Dim == 3) && "Shell distribution is only supported for 2D and 3D!");
+
+    const size_t num_particles = ArgParser::get<size_t>("num_particles");
+    const double min_bounds    = ArgParser::get<double>("min_bounds");
+    const double max_bounds    = ArgParser::get<double>("max_bounds");
+    const double bounds_size   = max_bounds - min_bounds;
+    const double radius        = 0.45 * bounds_size;  // Ensure particles stay inside bounds
+    const double center        = min_bounds + bounds_size / 2;
+    const size_t seed          = ArgParser::get<size_t>("seed");
+
+    std::mt19937_64 eng(seed);
+    std::uniform_real_distribution<double> angle_dist(0.0, 2.0 * M_PI);
+
+    for (unsigned int i = 0; i < num_particles; ++i) {
+        double angle = angle_dist(eng);
+
+        if constexpr (Dim == 2) {
+            double x              = center + radius * std::cos(angle);
+            double y              = center + radius * std::sin(angle);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y};
+        } else if constexpr (Dim == 3) {
+            double z_angle        = angle_dist(eng);
+            double x              = center + radius * std::sin(z_angle) * std::cos(angle);
+            double y              = center + radius * std::sin(z_angle) * std::sin(angle);
+            double z              = center + radius * std::cos(z_angle);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y, z};
+        }
+    }
+
+    return particle_positions;
+}
+
+template <size_t Dim, typename ParticlePositions>
+auto initializeLogNormal(ParticlePositions& particle_positions) {
+    static_assert((Dim == 2 || Dim == 3)
+                  && "Log-normal distribution is only supported for 2D and 3D!");
+
+    const size_t num_particles = ArgParser::get<size_t>("num_particles");
+    const double mean =
+        (ArgParser::get<double>("min_bounds") + ArgParser::get<double>("max_bounds")) / 2;
+    const double std_dev =
+        (ArgParser::get<double>("max_bounds") - ArgParser::get<double>("min_bounds")) / 6;
+    const double min_bounds = ArgParser::get<double>("min_bounds");
+    const double max_bounds = ArgParser::get<double>("max_bounds");
+    const size_t seed       = ArgParser::get<size_t>("seed");
+
+    std::mt19937_64 eng(seed);
+    std::lognormal_distribution<double> lognorm(std::log(mean), std_dev);
+
+    for (unsigned int i = 0; i < num_particles; ++i) {
+        if constexpr (Dim == 2) {
+            double x              = std::clamp(lognorm(eng), min_bounds, max_bounds);
+            double y              = std::clamp(lognorm(eng), min_bounds, max_bounds);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y};
+        } else if constexpr (Dim == 3) {
+            double x              = std::clamp(lognorm(eng), min_bounds, max_bounds);
+            double y              = std::clamp(lognorm(eng), min_bounds, max_bounds);
+            double z              = std::clamp(lognorm(eng), min_bounds, max_bounds);
+            particle_positions(i) = ippl::Vector<double, Dim>{x, y, z};
+        }
+    }
+
+    return particle_positions;
+}
 
 template <size_t Dim>
 auto initializeParticles();
@@ -41,8 +170,9 @@ static void define_arguments() {
     ArgParser::add_argument<double>("max_bounds", 1.0, "Max coordinate of the bounding box");
     ArgParser::add_argument<size_t>("seed", std::random_device{}(),
                                     "Seed for the random initialisation, default is random");
-    ArgParser::add_argument<std::string>("dist", "spiral",
-                                         "Type of particle distribution, one of: {random, spiral}");
+    ArgParser::add_argument<std::string>(
+        "dist", "spiral",
+        "Type of particle distribution, one of: {random, spiral, gauss, shell, lognorm}");
 
     // output arguments
     ArgParser::add_argument<std::string>("print_stats", "true",
@@ -117,8 +247,6 @@ void run_experiment() {
     tree.setPrintStats(enable_stats);
 
     auto particles = initializeParticles<Dim>();
-    int a;
-    std::cin >> a;
 
     auto begin = std::chrono::high_resolution_clock::now();
     if (run_parallel)
@@ -148,11 +276,16 @@ auto initializeParticles() {
 
     typename bunch_type::particle_position_type::HostMirror positions_host =
         bunch.R.getHostMirror();
-
     if (particle_distribution == "spiral") {
         initializeSpiral<Dim>(positions_host);
     } else if (particle_distribution == "random") {
         initializeRandom<Dim>(positions_host);
+    } else if (particle_distribution == "gauss") {
+        initializeGaussian<Dim>(positions_host);
+    } else if (particle_distribution == "shell") {
+        initializeShell<Dim>(positions_host);
+    } else if (particle_distribution == "lognorm") {
+        initializeLogNormal<Dim>(positions_host);
     } else {
         std::cerr << "Distribution: " << particle_distribution << " is not suppoerted!";
         exit(1);

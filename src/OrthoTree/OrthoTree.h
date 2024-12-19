@@ -272,6 +272,7 @@ namespace ippl {
 
         template <typename Iterator>
         std::ostream& print_octant_list(std::ostream& os, Iterator begin, Iterator end) {
+            // print_octant(os, 0); os << std::endl;
             for (Iterator it = begin; it != end; ++it) {
                 print_octant(os, *it);
                 os << std::endl;
@@ -281,7 +282,9 @@ namespace ippl {
         }
 
         std::ostream& print_particles(std::ostream& os, particle_t const& particles) {
-            for (size_t i = 0; i < particles.getLocalNum(); ++i) {
+            const size_t N =
+                (world_rank == 0) ? particles.getLocalNum() / world_size : particles.getLocalNum();
+            for (size_t i = 0; i < N; ++i) {
                 os << i << " " << particles.R(i) << std::endl;
             }
 
