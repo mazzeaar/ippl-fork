@@ -4,6 +4,7 @@
 #include <Kokkos_Pair.hpp>
 #include <Kokkos_Vector.hpp>
 #include <fstream>
+#include <span>
 #include <unordered_set>
 #include <span>
 #include <vector>
@@ -348,6 +349,6 @@ namespace ippl {
 #include "balancing/algo07.hpp"
 #include "balancing/algo09.hpp"
 #include "balancing/algo10.hpp"
-// #include "balancing/algo11.hpp"
+#include "balancing/algo11.hpp"
 
 #endif  // ORTHOTREE_GUARD

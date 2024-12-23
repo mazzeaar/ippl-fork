@@ -211,6 +211,15 @@ namespace ippl {
         inline bool is_ancestor(morton_code child, morton_code parent) const;
 
         /**
+         * @brief Checks whether the given parent is an ancestor or equal to the given child
+         *
+         * @param child the child code
+         * @param parent the parent code
+         * @return true if parent is ancestor of child
+         */
+        inline bool does_overlap(morton_code child, morton_code parent) const;
+
+        /**
          * @brief Checks whether the given child is a descendant of the given parents
          *
          * @param child the child code
@@ -269,8 +278,9 @@ namespace ippl {
         inline vector_t<morton_code> get_neighbors(const morton_code code,
                                                    const size_t neighbor_level) const;
 
-        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
+        inline vector_t<morton_code> get_insulation_layer(const morton_code code) const;
 
+        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
 
     private:
         const size_t max_depth;

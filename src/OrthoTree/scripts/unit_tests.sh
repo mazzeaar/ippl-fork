@@ -9,10 +9,10 @@ UNIT_TEST_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)/build/unit_tests/OrthoTree"
 # ADD YOUR TEST HERE IF IT REQUIRES MORE THAN ONE RANK TO PASS
 
 # test name
-MULTI_RANK_TESTS_KEYS=("parallel_tree_test" "aid_list_test" "parallel_construction_2" "parallel_construction_4" "parallel_construction_8")
+MULTI_RANK_TESTS_KEYS=("parallel_tree_test" "aid_list_test" "parallel_construction_2" "parallel_construction_4" "parallel_construction_8" "balancing")
 
 # number of ranks needed to pass
-MULTI_RANK_TESTS_VALUES=(4 4 2 4 8)
+MULTI_RANK_TESTS_VALUES=(4 4 2 4 8 4)
 
 # ================================
 

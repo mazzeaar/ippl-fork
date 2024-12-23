@@ -15,8 +15,12 @@ namespace ippl {
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> octants) {
+    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> arg_octants) {
         // this removes duplicates, inefficient as of now
+        Kokkos::View<morton_code*> octants = arg_octants;
+        for(int i = 0; i < octants.size(); ++i){
+            std::cerr << "Octants(" << i << "): " << octants(i);
+        }
         std::map<morton_code, int> m;
         for (auto octant : std::span(octants.data(), octants.size())) {
             ++m[octant];
@@ -74,7 +78,10 @@ namespace ippl {
         Kokkos::View<morton_code*> R_view("R_view", R_base_size);
 
         auto insert_into_R = [&](morton_code octant_a, morton_code octant_b) {
+            std::cerr << "No Balancing?" << std::endl;
+            std::cerr << "octant a: " << octant_a << " octant_b: " << octant_b << std::endl;
             auto complete_region_view       = complete_region(octant_a, octant_b);
+            std::cerr << "Maybe Balance :)" << std::endl;
             const size_t additional_octants = complete_region_view.size() + 1;
             size_t remaining_space          = R_view.size() - R_index;
 

@@ -374,6 +374,12 @@ namespace ippl {
         return neighbors;
     }
 
+    template <size_t Dim>
+    inline vector_t<morton_code> Morton<Dim>::get_insulation_layer(const morton_code code) const {
+        const size_t depth = get_depth(code);
+        return get_neighbors(code, depth);
+    }
+
     template<size_t Dim>
     inline bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
         // if the codes are the same they are not neighbors
@@ -399,6 +405,11 @@ namespace ippl {
         }
 
         return false;
+    }
+
+    template <size_t Dim>
+    inline bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
+        return (child == parent) || is_ancestor(child, parent);
     }
 
 } // namespace ippl
