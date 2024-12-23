@@ -211,6 +211,15 @@ namespace ippl {
         inline bool is_ancestor(morton_code child, morton_code parent) const;
 
         /**
+         * @brief Checks whether the given parent is an ancestor or equal to the given child
+         *
+         * @param child the child code
+         * @param parent the parent code
+         * @return true if parent is ancestor of child
+         */
+        inline bool does_overlap(morton_code child, morton_code parent) const;
+
+        /**
          * @brief Checks whether the given child is a descendant of the given parents
          *
          * @param child the child code

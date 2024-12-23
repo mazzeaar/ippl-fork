@@ -407,4 +407,9 @@ namespace ippl {
         return false;
     }
 
+    template <size_t Dim>
+    inline bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
+        return (child == parent) || is_ancestor(child, parent);
+    }
+
 } // namespace ippl
