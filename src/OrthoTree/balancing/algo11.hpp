@@ -161,17 +161,21 @@ namespace ippl {
     Kokkos::View<morton_code*> initialise_D_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> C_view) {
-        auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_check) {
+        auto should_insert = KOKKOS_LAMBDA(morton_code check_octant) {
             Kokkos::View<morton_code*> neighbour_view =
-                get_neighbour_view(morton_helper, octant_to_check);
+                get_neighbour_view(morton_helper, check_octant);
 
             return any_of(
                 neighbour_view, KOKKOS_LAMBDA(const morton_code neighbour_octant) {
                     return any_of(
                         B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
-                            return ((neighbour_octant == octant_B)
-                                    || morton_helper.is_ancestor(neighbour_octant, octant_B))
-                                   && !(morton_helper.is_ancestor(octant_to_check, octant_B));
+                            const bool overlaps_neighbour =
+                                morton_helper.does_overlap(neighbour_octant, octant_B);
+
+                            const bool overlaps_check_octant =
+                                morton_helper.is_ancestor(check_octant, octant_B);
+
+                            return overlaps_neighbour && !overlaps_check_octant;
                         });
                 });
         };
@@ -193,8 +197,10 @@ namespace ippl {
                 neighbour_view, KOKKOS_LAMBDA(const morton_code octant_Z) {
                     return any_of(
                         B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
-                            return (octant_Z != octant_B)
-                                   && !morton_helper.is_ancestor(octant_Z, octant_B);
+                            const bool overlaps_neighbour =
+                                morton_helper.does_overlap(neighbour_octant, octant_B);
+
+                            return !overlaps_neighbour;
                         });
                 });
         };
@@ -217,8 +223,7 @@ namespace ippl {
                 neighbour_view, KOKKOS_LAMBDA(const morton_code octant_Z) {
                     return any_of(
                         B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
-                            return (octant_to_insert == octant_B)
-                                   || morton_helper.is_ancestor(octant_to_insert, octant_B);
+                            return morton_helper.does_overlap(octant_to_insert, octant_B);
                         });
                 });
         };
@@ -349,8 +354,21 @@ namespace ippl {
         return T_view;
     }
 
-    template <size_t Dim>
+    /*
+    Input:      L_view:     A distributed sorted complete linear octree
+    Output:     R_view:     A distributed complete balanced linear octree
+
+    1.  B_view = block_partition(L_view)
+    2.  C_view = BalanceSubtree(B_view, L_view)         (algo7)
+    3.  D_view = intra-processor boundary octants
+    4.  S_view = ripple(D_view)                         (algo9)
+    5.  F_view = linearise(C ∪ S)                       (algo8)
+    6.  G_view = inter-processor boundary octants
+
+    */
+
     // INPUT HAS TO BE SORTED
+    template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
         // B = algo4
         const morton_code min_oct = L_view(0);
@@ -365,10 +383,11 @@ namespace ippl {
         std::for_each(B_view.data(), B_view.data() + B_view.size(),
                       [&, this](const morton_code octant_B) {
                           auto morton_helper_copy = this->morton_helper;
-                          const size_t count      = count_octants(
-                              L_view, [morton_helper_copy, octant_B](const morton_code octant_L) {
-                                  return morton_helper_copy.is_descendant(octant_L, octant_B);
-                              });
+                          auto should_copy        = KOKKOS_LAMBDA(const morton_code octant_L) {
+                              return morton_helper_copy.is_descendant(octant_L, octant_B);
+                          };
+
+                          const size_t count = count_octants(L_view, should_copy);
 
                           Kokkos::View<morton_code*> Temp_view("Temp_view", count);
 
@@ -376,7 +395,7 @@ namespace ippl {
                           // this has to be sequential as well
                           std::for_each(L_view.data(), L_view.data() + L_view.size(),
                                         [&](const morton_code octant_L) {
-                                            if (morton_helper.is_descendant(octant_L, octant_B)) {
+                                            if (should_copy(octant_L)) {
                                                 Temp_view(index) = octant_L;
                                                 ++index;
                                             }
