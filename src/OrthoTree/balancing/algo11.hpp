@@ -10,6 +10,68 @@ namespace ippl {
     - UNCOMMENT THE INCLUSION OF THIS FILE IN ORTHO_TREE.HPP (BOTTOM)
     */
 
+    // ================================
+    // ================================
+    // DEVELOPMENT HELPERS
+    // TODO: delete those
+    // ================================
+    // ================================
+
+    /**
+     * @warning This function is just for development purposes, this way we know if stuff is sorted
+     * or not. this has to be removed somehow before merging this branch
+     */
+    void sort_if_necessary(Kokkos::View<morton_code*> check_view, std::string_view view_name,
+                           std::string_view func_name) {
+        const std::string_view COLOR_RED   = "\e[0;31m";
+        const std::string_view COLOR_RESET = "\e[0;31m";
+
+        if (!std::is_sorted(check_view.data(), check_view.data() + check_view.size())) {
+            std::cerr << COLOR_RED << "{view: " << view_name << "}" << " IS NOT SORTED IN "
+                      << "{func: " << func_name << "}"
+                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
+                      << COLOR_RESET << std::endl;
+            std::sort(check_view.data(), check_view.data() + check_view.size());
+        }
+    }
+
+    /**
+     * @brief As of now morton_helper.get_neighbours returns a std::vector (aliased as vector_t),
+     * this is no bueno. This helper enables us to write algo11 as if neighbours is already
+     * implemented to return views
+     */
+    Kokkos::View<morton_code*> get_neighbour_view(const auto& morton_helper,
+                                                  const morton_code octant) {
+        /**
+         * this 'vector_t' is on purpose, we will get
+         * compilation errors when we change the
+         * return type to view
+         *
+         * just delete this whole function and replace its call with a direct call to
+         * 'get_neighbors'
+         */
+        vector_t<morton_code> neighbour_vec =
+            morton_helper.get_neighbors(octant, morton_helper.get_depth(octant));
+
+        Kokkos::View<morton_code*> neighbour_view("neighbour_view", neighbour_vec.size());
+        Kokkos::parallel_for(
+            "CopyStdVectorToKokkosView", neighbour_vec.size(),
+            KOKKOS_LAMBDA(const size_t i) { neighbour_view(i) = neighbour_vec[i]; });
+
+        return neighbour_view;
+    }
+
+    // ================================
+    // ================================
+    // VIEW HELPERS
+    // just to reduce code duplication
+    // ================================
+    // ================================
+
+    /**
+     * @brief Takes an arbitrary amount of views and concatenates them into one view. The views are
+     * concatenated in the same order they are passed into the function
+     */
     template <typename... ViewTypes>
     Kokkos::View<morton_code*> concatenateViews(ViewTypes... views) {
         size_t total_size = (views.extent(0) + ...);
@@ -28,149 +90,118 @@ namespace ippl {
         return result;
     }
 
-    template <typename Func>
-    size_t count_octants(Kokkos::View<morton_code*> count_view, Func should_insert) {
+    /**
+     * @brief Counts the number of octants in the given view that fullfill the predicate
+     */
+    template <typename Predicate>
+    size_t count_octants(Kokkos::View<morton_code*> count_view, Predicate predicate) {
         size_t count = 0;
 
         Kokkos::parallel_reduce(
             "CountValidOctants", count_view.extent(0),
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 // no branching
-                local_count += (should_insert(count_view(i)) == true);
+                local_count += (predicate(count_view(i)) == true);
             },
             count);
 
         return count;
     }
 
-    // Why not just use algo7?? Is this even correct?!? TODO
-    Kokkos::View<morton_code*> initialise_C_View(const auto& morton_helper,
-                                                 Kokkos::View<morton_code*> B_view,
-                                                 Kokkos::View<morton_code*> L_view) {
-        Kokkos::View<morton_code*> C_view("C_view", 0);
+    /**
+     * @brief Filters octants based on the given predicate
+     * @warning out_view will NOT be sorted!
+     *
+     * by @mathieu TODO: Why not just initialize the G_View with a fairly high number of memory, add
+     * more if necessary and fit to size in the end by counting when you insert an element that way
+     * you dont have to find out which octants to insert twice TODO
+     *
+     * answer by @aaron:
+     * 1.   i have now extracted the filtering steps into one function, this way we can
+     *      just apply this optimisation in here.
+     * 2.   Question: we should measure if (allocation + resizing) is faster than two filter passes
+     *      (the filter is fully Kokkos::parallel'ed)
+     */
+    template <typename Predicate>
+    Kokkos::View<morton_code*> filter_octants(Kokkos::View<morton_code*> in_view,
+                                              Predicate predicate) {
+        const size_t n_pass = count_octants(in_view, predicate);
 
-        std::for_each(
-            B_view.data(), B_view.data() + B_view.size(), [&, this](const morton_code octant_B) {
-                Kokkos::View<size_t> count("count");
+        Kokkos::View<morton_code*> out_view("filtered_octants", n_pass);
+        Kokkos::View<size_t> index("index");
+        Kokkos::deep_copy(index, size_t(0));
 
-                // this can be done much faster with lower+upper bounds later on
-                Kokkos::parallel_for(
-                    "CountValidDescendants", L_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                        const morton_code octant_L = L_view(i);
-                        if (morton_helper.is_descendant(octant_L, octant_B)) {
-                            Kokkos::atomic_add(&count(), 1);
-                        }
-                    });
-
-                Kokkos::View<morton_code*> Temp_view("Temp_view", count());
-
-                size_t index = 0;
-                std::for_each(L_view.data(), L_view.data() + L_view.size(),
-                              [&, this](const morton_code octant_L) {
-                                  if (morton_helper.is_descendant(octant_L, octant_B)) {
-                                      Temp_view(index) = octant_L;
-                                      ++index;
-                                  }
-                              });
-
-                auto algo7_view = algo7(octant_B, Temp_view);
-                concatenateViews(C_view, algo7_view);
+        Kokkos::parallel_for(
+            "filter_octants", in_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
+                const morton_code val = in_view(i);
+                if (predicate(val)) {
+                    const size_t my_index = Kokkos::atomic_fetch_add(&index(), size_t(1));
+                    out_view(my_index)    = val;
+                }
             });
 
-        return C_view;
+        return out_view;
     }
+
+    /**
+     * @brief Returns true if any of the octants in the count_view fullfill the predicate
+     */
+    template <typename Predicate>
+    bool any_of(Kokkos::View<morton_code*> count_view, Predicate predicate) {
+        return (count_octants(count_view, predicate) != 0);
+    }
+
+    // ================================
+    // ================================
+    // ALGO11 HELPERS
+    // just to reduce code duplication and make the function algo11 more readable
+    // ================================
+    // ================================
 
     Kokkos::View<morton_code*> initialise_D_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> C_view) {
-        auto should_insert = [&](const morton_code octant_X) -> bool {
-            // TODO: gettng neighbours is probably wrong here
-            const auto neighbours =
-                morton_helper.get_neighbors(octant_X, morton_helper.get_depth(octant_X));
+        auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_check) {
+            Kokkos::View<morton_code*> neighbour_view =
+                get_neighbour_view(morton_helper, octant_to_check);
 
-            return std::any_of(
-                neighbours.data(), neighbours.data() + neighbours.size(),
-                [&](const morton_code octant_Z) {
-                    return std::any_of(
-                        B_view.data(), B_view.data() + B_view.size(),
-                        [&](const morton_code octant_B) {
-                            // set_A = {z, ancestors of z}
-                            // set_B = {ancestors of x}
-                            return ((octant_Z == octant_B)
-                                    || morton_helper.is_ancestor(octant_Z, octant_B))
-                                   && !(morton_helper.is_ancestor(octant_X, octant_B));
+            return any_of(
+                neighbour_view, KOKKOS_LAMBDA(const morton_code neighbour_octant) {
+                    return any_of(
+                        B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
+                            return ((neighbour_octant == octant_B)
+                                    || morton_helper.is_ancestor(neighbour_octant, octant_B))
+                                   && !(morton_helper.is_ancestor(octant_to_check, octant_B));
                         });
                 });
         };
 
         // D = intra-proc boundaries
-        size_t octant_count = count_octants(C_view, should_insert);
-        Kokkos::View<morton_code*> D_view("D_view", octant_count);
-
-        // populate D_view
-        Kokkos::View<size_t> index("index");
-        Kokkos::parallel_for(
-            "PopulateD", C_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                const auto octant_X = C_view(i);
-
-                if (should_insert(octant_X)) {
-                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1); // TODO Might be buggy, depending on pre- or post-increment
-                    D_view(current_index) = octant_X;
-                }
-            });
-
-        if (!std::is_sorted(D_view.data(), D_view.data() + D_view.size())) {
-            std::cerr << "D_VIEW IS NOT SORTED IN " << __func__
-                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
-                      << std::endl;
-            std::sort(D_view.data(), D_view.data() + D_view.size());
-            // throw std::runtime_error("NOT SORTED IN initialise_D_view");
-        }
-
+        Kokkos::View<morton_code*> D_view = filter_octants(C_view, should_insert);
+        sort_if_necessary(D_view, "D_view", __func__);
         return D_view;
     }
-    // Why not just initialize the G_View with a fairly high number of memory, add more if necessary and fit to size in the end by counting when you insert an element
-    // that wy you dont have to find out which octants to insert twice TODO
+
     Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> F_view) {
-        auto should_insert = [&](morton_code octant_to_insert) -> bool {
-            const auto neighbours = morton_helper.get_neighbors(
-                octant_to_insert, morton_helper.get_depth(octant_to_insert));
-            return std::any_of(neighbours.data(), neighbours.data() + neighbours.size(),
-                               [&](const morton_code octant_Z) {
-                                   return std::any_of(B_view.data(), B_view.data() + B_view.size(),
-                                                      [&](const morton_code octant_B) {
-                                                          // set_A = {z, ancestors of z}
-                                                          // true if: B is in set_A
-                                                          return (octant_Z != octant_B)
-                                                                 && !morton_helper.is_ancestor(
-                                                                     octant_Z, octant_B);
-                                                      });
-                               });
+        auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_check) {
+            Kokkos::View<morton_code*> neighbour_view =
+                get_neighbour_view(morton_helper, octant_to_check);
+
+            return any_of(
+                neighbour_view, KOKKOS_LAMBDA(const morton_code octant_Z) {
+                    return any_of(
+                        B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
+                            return (octant_Z != octant_B)
+                                   && !morton_helper.is_ancestor(octant_Z, octant_B);
+                        });
+                });
         };
 
-        size_t octant_count = count_octants(F_view, should_insert);
-        Kokkos::View<morton_code*> G_view("G_view", octant_count);
-
-        Kokkos::View<size_t> index("index");
-        Kokkos::parallel_for(
-            "InsertValidOctants", F_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                auto octant_X = F_view(i);
-                if (should_insert(octant_X)) {
-                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1);
-                    G_view(current_index) = octant_X;
-                }
-            });
-
-        if (!std::is_sorted(G_view.data(), G_view.data() + G_view.size())) {
-            std::cerr << "G_VIEW IS NOT SORTED IN " << __func__
-                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
-                      << std::endl;
-            std::sort(G_view.data(), G_view.data() + G_view.size());
-            // throw std::runtime_error("NOT SORTED IN initialise_G_view");
-        }
-
+        // D = inter-proc boundaries
+        Kokkos::View<morton_code*> G_view = filter_octants(F_view, should_insert);
+        sort_if_necessary(G_view, "G_view", __func__);
         return G_view;
     }
 
@@ -178,54 +209,25 @@ namespace ippl {
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> H_view,
                                                  Kokkos::View<morton_code*> F_view) {
-        auto should_insert = [&](morton_code octant_to_insert) -> bool {
-            const auto neighbours = morton_helper.get_neighbors(
-                octant_to_insert, morton_helper.get_depth(octant_to_insert));
-            return std::any_of(neighbours.data(), neighbours.data() + neighbours.size(),
-                               [&](const morton_code octant_Z) {
-                                   return std::any_of(B_view.data(), B_view.data() + B_view.size(),
-                                                      [&](const morton_code octant_B) {
-                                                          // set_A = {z, ancestors of z}
-                                                          // true if: B is in set_A
-                                                          return (octant_to_insert == octant_B)
-                                                                 || morton_helper.is_ancestor(
-                                                                     octant_to_insert, octant_B);
-                                                      });
-                               });
+        auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_insert) {
+            Kokkos::View<morton_code*> neighbour_view =
+                get_neighbour_view(morton_helper, octant_to_insert);
+
+            return any_of(
+                neighbour_view, KOKKOS_LAMBDA(const morton_code octant_Z) {
+                    return any_of(
+                        B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
+                            return (octant_to_insert == octant_B)
+                                   || morton_helper.is_ancestor(octant_to_insert, octant_B);
+                        });
+                });
         };
 
-        size_t octant_count = count_octants(H_view, should_insert);
-        octant_count += count_octants(F_view, should_insert);
+        Kokkos::View<morton_code*> H_filtered = filter_octants(H_view, should_insert);
+        Kokkos::View<morton_code*> F_filtered = filter_octants(F_view, should_insert);
 
-        Kokkos::View<morton_code*> R_view("R_view", octant_count);
-
-        Kokkos::View<size_t> index("index");
-        Kokkos::parallel_for(
-            "InsertValidOctants", H_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                auto octant_X = H_view(i);
-                if (should_insert(octant_X)) {
-                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1);
-                    R_view(current_index) = octant_X;
-                }
-            });
-
-        Kokkos::parallel_for(
-            "InsertValidOctants", F_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                auto octant_X = F_view(i);
-                if (should_insert(octant_X)) {
-                    size_t current_index  = Kokkos::atomic_fetch_add(&index(), 1);
-                    R_view(current_index) = octant_X;
-                }
-            });
-
-        if (!std::is_sorted(R_view.data(), R_view.data() + R_view.size())) {
-            std::cerr << "R_VIEW IS NOT SORTED IN " << __func__
-                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!"
-                      << std::endl;
-            std::sort(R_view.data(), R_view.data() + R_view.size());
-            // throw std::runtime_error("NOT SORTED IN initialise_R_view");
-        }
-
+        Kokkos::View<morton_code*> R_view = concatenateViews(H_filtered, F_filtered);
+        sort_if_necessary(R_view, "R_view", __func__);
         return R_view;
     }
 
@@ -349,18 +351,40 @@ namespace ippl {
 
     template <size_t Dim>
     // INPUT HAS TO BE SORTED
-    Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(
-        Kokkos::View<morton_code*> distributed_complete_tree_L) {
+    Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
         // B = algo4
-        const morton_code min_oct = distributed_complete_tree_L(0);
-        const morton_code max_oct = distributed_complete_tree_L(distributed_complete_tree_L.size() - 1);
+        const morton_code min_oct = L_view(0);
+        const morton_code max_oct = L_view(L_view.size() - 1);
         std::cerr << "Min_oct: " << min_oct << " Max_oct: " << max_oct << endl;
 
         Kokkos::View<morton_code*> B_view = block_partition(min_oct, max_oct);
         std::cerr << "SURVIVED BLOCK_PARTITION" << std::endl;
 
-        // C = algo7(B, L)
-        auto C_view = initialise_C_View(this->morton_helper, B_view, distributed_complete_tree_L);
+        // this has to be sequential, else we have to sort C_view at the end
+        Kokkos::View<morton_code*> C_view("C_view", 0);
+        std::for_each(B_view.data(), B_view.data() + B_view.size(),
+                      [&, this](const morton_code octant_B) {
+                          auto morton_helper_copy = this->morton_helper;
+                          const size_t count      = count_octants(
+                              L_view, [morton_helper_copy, octant_B](const morton_code octant_L) {
+                                  return morton_helper_copy.is_descendant(octant_L, octant_B);
+                              });
+
+                          Kokkos::View<morton_code*> Temp_view("Temp_view", count);
+
+                          size_t index = 0;
+                          // this has to be sequential as well
+                          std::for_each(L_view.data(), L_view.data() + L_view.size(),
+                                        [&](const morton_code octant_L) {
+                                            if (morton_helper.is_descendant(octant_L, octant_B)) {
+                                                Temp_view(index) = octant_L;
+                                                ++index;
+                                            }
+                                        });
+
+                          auto algo7_view = algo7(octant_B, Temp_view);
+                          concatenateViews(C_view, algo7_view);
+                      });
 
         // D = intra proc boundaries
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view);
