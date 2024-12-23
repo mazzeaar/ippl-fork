@@ -30,15 +30,17 @@ namespace ippl {
 
     template <typename Func>
     size_t count_octants(Kokkos::View<morton_code*> count_view, Func should_insert) {
-        Kokkos::View<size_t> count("count");
-        Kokkos::parallel_for(
-            "CountValidOctants", count_view.extent(0), KOKKOS_LAMBDA(const size_t i) {
-                if (should_insert(count_view(i))) {
-                    Kokkos::atomic_increment(&count());
-                }
-            });
+        size_t count = 0;
 
-        return count();
+        Kokkos::parallel_reduce(
+            "CountValidOctants", count_view.extent(0),
+            KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
+                // no branching
+                local_count += (should_insert(count_view(i)) == true);
+            },
+            count);
+
+        return count;
     }
 
     // Why not just use algo7?? Is this even correct?!? TODO
