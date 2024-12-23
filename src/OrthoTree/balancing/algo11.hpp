@@ -194,7 +194,7 @@ namespace ippl {
                 get_neighbour_view(morton_helper, octant_to_check);
 
             return any_of(
-                neighbour_view, KOKKOS_LAMBDA(const morton_code octant_Z) {
+                neighbour_view, KOKKOS_LAMBDA(const morton_code neighbour_octant) {
                     return any_of(
                         B_view, KOKKOS_LAMBDA(const morton_code octant_B) {
                             const bool overlaps_neighbour =
