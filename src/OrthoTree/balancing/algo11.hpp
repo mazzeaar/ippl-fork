@@ -236,26 +236,6 @@ namespace ippl {
         return R_view;
     }
 
-    Kokkos::View<morton_code* [2]> exchange_min_max_octants(Kokkos::View<morton_code*> B_view) {
-        const morton_code local_min = B_view(0);
-        const morton_code local_max = B_view(B_view.extent(0) - 1);
-
-        morton_code local_data[2] = {local_min, local_max};
-
-        std::vector<morton_code> gathered_data_buff(Comm->size() * 2);
-
-        Comm->allgather(local_data, gathered_data_buff.data(), 2);
-
-        Kokkos::View<morton_code* [2]> min_max_view("min_max_view", Comm->size());
-        Kokkos::parallel_for(
-            "FillMinMaxView", Comm->size(), KOKKOS_LAMBDA(const size_t rank) {
-                min_max_view(rank, 0) = gathered_data_buff[rank * 2];      // min oct
-                min_max_view(rank, 1) = gathered_data_buff[rank * 2 + 1];  // max oct
-            });
-
-        return min_max_view;
-    }
-
     std::pair<Kokkos::View<morton_code*>, Kokkos::View<size_t*>> exchange_B_glob_with_offsets(
         Kokkos::View<morton_code*> B_view) {
         // chatgpt function, im too cooked for this
@@ -355,6 +335,131 @@ namespace ippl {
     }
 
     /*
+    We do the following: Each rank puts its B_view into a window, then each rank iterates through
+    all other ranks and does checks.
+
+    Question: maybe it is more efficient to do the inverse? put B_view into a window and then each
+    rank can directly take what it needs. BUT then we also need to communicate what we have received
+    to the rank whence we took it...
+     */
+    auto inter_proc_boundaries(const auto& morton_helper, Kokkos::View<morton_code*> G_view,
+                               Kokkos::View<morton_code*> B_view) {
+        /*
+        the return type should probably be a pair of views.
+        one with the octants we send, and one with offsets for each target rank
+        */
+
+        const size_t world_size = Comm->size();
+        const size_t world_rank = Comm->rank();
+
+        // communicate sizes
+        Kokkos::View<size_t*> window_sizes("window_sizes", world_size);
+        Comm->allgather(&(B_view.size()), window_sizes, 1);
+
+        mpi::rma::Window<mpi::rma::Active> Glob_view;
+        {  // initialise window
+            auto B_span = std::span(B_view.data(), B_view.size());
+            Glob_view.create(*Comm, B_span.begin(), B_span.end());
+            Glob_view.fence(0);
+        }
+
+        size_t send_idx                     = 0;
+        const size_t data_to_send_base_size = 100;
+        Kokkos::View<morton_code[2]*> data_to_send("source_data", data_to_send_base_size);
+
+        // scan the window of each rank
+        for (size_t source_rank = 0; source_rank < world_size; ++source_rank) {
+            if (source_rank == world_rank) {
+                continue;
+            }
+
+            {  // load data
+                auto source_span = std::span(source_data.data(), source_data.size());
+                Glob_view.get(source_span.begin(), source_span.end(), source_rank, 0, request);
+            }
+
+            // do stuff with data
+            {
+                auto should_send = []() -> bool {
+                    return true;
+                };
+
+                // naive for now, im lazy
+                for (size_t i = 0; i < B_view.size(); ++i) {
+                    const morton_code B_oct     = B_view(i);
+                    const auto insulation_layer = morton_helper.get_insulation_layer(B_oct);
+                    auto insulation_span =
+                        std::span(insulation_layer.data(), insulation_layer.size());
+                    std::unordered_set<morton_code> i_layer(insulation_span.begin(),
+                                                            insulation_span.end());
+
+                    for (size_t j = 0; j < source_data.size(); ++j) {
+                        const morton_code Glob_oct = source_data(j);
+                        if (i_layer.count(Glob_oct) == 0) {
+                            continue;
+                        }
+
+                        if (send_idx == data_to_send.size()) {
+                            Kokkos::resize(data_to_send,
+                                           data_to_send.size() + data_to_send_base_size);
+                        }
+
+                        data_to_send(send_idx, 0) = B_oct;
+                        data_to_send(send_idx, 1) = source_rank;
+                        ++send_idx;
+                    }
+                }
+            }
+        }
+
+        Kokkos::resize(data_to_send, send_idx);
+        return data_to_send;
+    }
+
+    void windows_test() {
+        const size_t world_size = Comm->size();
+        const size_t world_rank = Comm->rank();
+        Inform logger("windows_test", std::cout, INFORM_ALL_NODES);
+        logger.on(true);
+        logger.setOutputLevel(1);
+
+        Kokkos::View<size_t*> test_view("test_view", 1);
+        test_view(0) = world_rank * 10;
+
+        Kokkos::View<size_t*> sizes("sizes", world_size);
+        Kokkos::deep_copy(sizes, size_t(0));
+
+        logger << level1 << "BEFORE: { ";
+        for (int i = 0; i < world_size; ++i) {
+            logger << level1 << sizes(i);
+            if (i + 1 < world_size) {
+                logger << ", ";
+            }
+        }
+        logger << level1 << " }" << endl;
+
+        mpi::rma::Window<mpi::rma::Active> size_window;
+        auto sizes_span = std::span(sizes.data(), sizes.size());
+
+        size_window.create(*Comm, sizes_span.begin(), sizes_span.end());
+        size_window.fence(0);
+
+        for (int target_rank = 0; target_rank < static_cast<int>(world_size); ++target_rank) {
+            size_window.put(world_rank, target_rank, world_rank);
+        }
+        size_window.fence(0);
+
+        logger << level1 << "AFTER: { ";
+        for (int i = 0; i < world_size; ++i) {
+            logger << level1 << sizes(i);
+            if (i + 1 < world_size) {
+                logger << ", ";
+            }
+        }
+        logger << level1 << " }" << endl;
+    }
+
+    /*
     Input:      L_view:     A distributed sorted complete linear octree
     Output:     R_view:     A distributed complete balanced linear octree
 
@@ -370,6 +475,8 @@ namespace ippl {
     // INPUT HAS TO BE SORTED
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
+        windows_test();
+        return L_view;
         // B = algo4
         const morton_code min_oct = L_view(0);
         const morton_code max_oct = L_view(L_view.size() - 1);
@@ -504,7 +611,7 @@ namespace ippl {
         auto H_view = algo9(concatenateViews(G_view, T_view, K_view));
 
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
-        R_view = linearise_octants(R_view);
+        R_view      = linearise_octants(R_view);
 
         return R_view;
     }
