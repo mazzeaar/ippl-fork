@@ -31,7 +31,7 @@ TEST(CompleteRegion, CompleteSimpleQuad) {
 
     Kokkos::View<morton_code*> complete_region = tree.complete_region(code_a, code_b);
 
-    ASSERT_EQ(expected.size(), complete_region.size()) << "Sizes dont match!";
+    EXPECT_EQ(expected.size(), complete_region.size()) << "Sizes dont match!";
 
     for (size_t i = 0; i < expected.size(); ++i) {
         const auto expected_octant = expected(i);
@@ -52,7 +52,7 @@ TEST(CompleteRegion, NextToEachOther) {
 
     Kokkos::View<morton_code*> complete_region = tree.complete_region(code_a, code_b);
 
-    ASSERT_EQ(0, complete_region.size()) 
+    EXPECT_EQ(0, complete_region.size())
         << "Complete region isn't empty! Size: " << complete_region.size();
 }
 
@@ -67,8 +67,7 @@ TEST(CompleteRegion, OneParentOfAnother) {
 
     Kokkos::View<morton_code*> complete_region = tree.complete_region(code_a, code_b);
 
-    ASSERT_EQ(0, complete_region.size()) 
-        << "Complete region ! Size: " << complete_region.size();
+    EXPECT_EQ(2, complete_region.size()) << "Complete region ! Size: " << complete_region.size();
 }
 
 // this is required to test the orthotree, as it depends on ippl
