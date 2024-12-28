@@ -129,6 +129,7 @@ namespace ippl {
          * @return block partitioned octree, and unpartitioned_tree is re-distributed
          **/
         Kokkos::View<morton_code*> block_partition(morton_code min_octant, morton_code max_octant);
+        Kokkos::View<morton_code*> algo4_11(Kokkos::View<morton_code*> F_view);
 
         /**
          * ALGO 5
