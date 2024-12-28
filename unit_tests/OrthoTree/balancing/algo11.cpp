@@ -99,7 +99,7 @@ auto initializeRandom(size_t num_particles, double min_bounds, double max_bounds
 TEST(BalancingTest, TestTest) {
     static constexpr size_t Dim = 2;
     const size_t max_depth      = 10;
-    const size_t max_particles  = 20;
+    const size_t max_particles  = 2;
     const size_t n_particles    = 5000;
 
     BoundingBox<Dim> bounds({0.0, 0.0}, {1.0, 1.0});
