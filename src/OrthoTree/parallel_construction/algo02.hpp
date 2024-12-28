@@ -11,7 +11,6 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
                                                                morton_code code_b) {
         assert(code_a < code_b);
-        std::cerr << "Past abort in algo2" << std::endl;
 
         size_t estimated_size = 79;  // should never have to resize with this
         Kokkos::View<morton_code*> min_lin_tree("min_lin_tree", estimated_size);
