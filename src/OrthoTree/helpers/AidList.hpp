@@ -42,10 +42,10 @@ namespace ippl {
                 "can only initialize if all particles are gathered on one rank!");
         }
 
-        const size_t n_particles               = particles.getTotalNum();
-        const size_t grid_size                 = (size_t(1) << max_depth);
-        using real_coordinate                  = real_coordinate_template<Dim>;
-        using grid_coordinate                  = grid_coordinate_template<Dim>;
+        const size_t n_particles = particles.getTotalNum();
+        const size_t grid_size = (size_t(1) << max_depth);
+        using real_coordinate = real_coordinate_template<Dim>;
+        using grid_coordinate = grid_coordinate_template<Dim>;
         const real_coordinate root_bounds_size = root_bounds.get_max() - root_bounds.get_min();
 
         // temporary structure to hold the data... TODO: make this smarter
@@ -57,22 +57,22 @@ namespace ippl {
                 (particles.R(i) - root_bounds.get_min()) * (grid_size - 1) / root_bounds_size);
 
             // encode the grid coordinate and store it
-            temp_aid_list[i] = {morton_helper.encode(grid_coord, max_depth), i};
+            temp_aid_list[i] = { morton_helper.encode(grid_coord, max_depth), i };
         }
 
         // sort by morton codes: TODO: make this smarter
         std::sort(temp_aid_list.begin(), temp_aid_list.end(), [](const auto& a, const auto& b) {
             return a.first < b.first;
-        });
+            });
 
         this->resize(n_particles);
 
         // ARE MIRRORS/DEEP COPIES REALLY NEEDED??
-        auto host_octants      = Kokkos::create_mirror_view(this->getOctants());
+        auto host_octants = Kokkos::create_mirror_view(this->getOctants());
         auto host_particle_ids = Kokkos::create_mirror_view(this->getParticleIDs());
 
         for (size_t i = 0; i < n_particles; ++i) {
-            host_octants(i)      = temp_aid_list[i].first;
+            host_octants(i) = temp_aid_list[i].first;
             host_particle_ids(i) = temp_aid_list[i].second;
         }
 
@@ -84,9 +84,9 @@ namespace ippl {
     size_t AidList<Dim>::getLowerBoundIndex(morton_code target_octant) const {
         const auto lower_bound_it =
             std::lower_bound(octants.data(), octants.data() + octants.extent(0), target_octant,
-                             [](const morton_code& octants_entry, const morton_code& target) {
-                                 return octants_entry < target;
-                             });
+                [](const morton_code& octants_entry, const morton_code& target) {
+                    return octants_entry < target;
+                });
 
         return static_cast<size_t>(lower_bound_it - this->octants.data());
     }
@@ -95,9 +95,9 @@ namespace ippl {
     size_t AidList<Dim>::getUpperBoundIndexExclusive(morton_code target_octant) const {
         const auto upper_bound_it =
             std::upper_bound(octants.data(), octants.data() + octants.extent(0), target_octant,
-                             [](const morton_code& target, const morton_code& octants_entry) {
-                                 return target < octants_entry;
-                             });
+                [](const morton_code& target, const morton_code& octants_entry) {
+                    return target < octants_entry;
+                });
 
         return static_cast<size_t>(upper_bound_it - this->octants.data());
     }
@@ -125,32 +125,33 @@ namespace ippl {
     std::pair<morton_code, morton_code> AidList<Dim>::getMinReqOctants() {
         morton_code min_max_octants[2];
         if (world_rank == 0) {
-            const size_t size       = this->size();
+            const size_t size = this->size();
             const size_t batch_size = size / world_size;
-            const size_t remainder  = size % world_size;
+            const size_t remainder = size % world_size;
 
             // rank_{i+1} = [ (i * batch_size) + remainder, (i+1) * batch_size ]
             Kokkos::parallel_for("Send min/max octants", world_size - 1, [=, this](const size_t i) {
-                morton_code local_min_max_octants[2] = {0};  // inside the parallel for because of
-                                                             // read-only
+                morton_code local_min_max_octants[2] = { 0 };  // inside the parallel for because of
+                // read-only
                 const size_t target_rank = i + 1;
 
                 // distribute the remainders for a more balanced load
                 const size_t start = (target_rank * batch_size) + (target_rank < remainder ? 1 : 0);
-                const size_t end   = start + batch_size;
+                const size_t end = start + batch_size;
 
                 local_min_max_octants[0] = getOctant(start);
                 local_min_max_octants[1] = getOctant(end - 1);
 
                 Comm->send(*local_min_max_octants, 2, target_rank, 0);
-            });
+                });
 
             const size_t start = 0;
-            const size_t end   = batch_size + (0 < remainder ? 1 : 0);  // one extra octant
+            const size_t end = batch_size + (0 < remainder ? 1 : 0);  // one extra octant
 
             min_max_octants[0] = getOctant(start);
             min_max_octants[1] = getOctant(end - 1);
-        } else {
+        }
+        else {
             mpi::Status status;
             Comm->recv(min_max_octants, 2, 0, 0, status);
         }
@@ -168,8 +169,8 @@ namespace ippl {
                 Comm->recv(*min_max_buff, 2, rank, 0, status);
 
                 const size_t start = getLowerBoundIndex(min_max_buff[0]);
-                const size_t end   = getUpperBoundIndexExclusive(min_max_buff[1]);
-                size_buff          = end - start;
+                const size_t end = getUpperBoundIndexExclusive(min_max_buff[1]);
+                size_buff = end - start;
 
                 Comm->send(size_buff, 1, rank, 0);
 
@@ -177,9 +178,10 @@ namespace ippl {
                 Comm->send(*(particle_ids.data() + start), size_buff, rank, 0);
 
                 logger << "sent " << size_buff << " octants to rank " << rank << " range: ("
-                       << getOctant(start) << ", " << getOctant(end) << ")" << endl;
+                    << getOctant(start) << ", " << getOctant(end) << ")" << endl;
             }
-        } else {
+        }
+        else {
             min_max_buff[0] = min_octant;
             min_max_buff[1] = morton_helper.get_deepest_last_descendant(max_octant);
 
@@ -188,7 +190,7 @@ namespace ippl {
             mpi::Status size_status;
             Comm->recv(&size_buff, 1, 0, 0, size_status);
 
-            this->octants      = Kokkos::View<morton_code*>("aid_list_octants", size_buff);
+            this->octants = Kokkos::View<morton_code*>("aid_list_octants", size_buff);
             this->particle_ids = Kokkos::View<size_t*>("aid_list_particle_ids", size_buff);
 
             mpi::Status octants_status, particle_id_status;
@@ -201,6 +203,9 @@ namespace ippl {
     template <typename Container>
     Kokkos::View<size_t*> AidList<Dim>::getNumParticlesInOctantsParallel(
         const Container& octant_container) {
+        IpplTimings::TimerRef timer = IpplTimings::getTimer("getNumParticlesInOctantsParallel");
+        IpplTimings::startTimer(timer);
+
         size_t size_buff;
         Kokkos::View<size_t*> weights("weights_view", octant_container.size());
         if (world_rank == 0) {
@@ -235,7 +240,8 @@ namespace ippl {
                 weights[i] = getNumParticlesInOctant(octant_container[i]);
             }
 
-        } else {
+        }
+        else {
             // send size of octants we are requesting to rank 0
             size_buff = octant_container.size();
             Comm->send(size_buff, 1, 0, 0);
@@ -245,7 +251,7 @@ namespace ippl {
             mpi::Status weights_status;
             Comm->recv(weights.data(), size_buff, 0, 0, weights_status);
         }
-
+        IpplTimings::stopTimer(timer);
         return weights;
     }
 }  // namespace ippl

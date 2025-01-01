@@ -183,6 +183,8 @@ static void define_arguments() {
 
     ArgParser::add_argument<std::string>("parallel", "true",
                                          "true for parallel, false for sequential run");
+    ArgParser::add_argument<std::string>("visualize_helper", "true", 
+                                         "Enables the replicate this run message");
 }
 
 int main(int argc, char* argv[]) {
@@ -190,9 +192,10 @@ int main(int argc, char* argv[]) {
     {
         define_arguments();
         ArgParser::parse(argc, argv);
+        const bool visualize_helper = ArgParser::get<bool>("visualize_helper");
 
         // logging at the beginning in case the run crashes
-        if (Comm->rank() == 0) {
+        if (Comm->rank() == 0 && visualize_helper) {
             std::cerr << "Replicate this run with: \n"
                       << "./visualise.sh " << Comm->size() << " " << ArgParser::get_args()
                       << std::endl;
@@ -209,7 +212,7 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
 
-        if (Comm->rank() == 0) {
+        if (Comm->rank() == 0 && visualize_helper)  {
             std::cerr << "Replicate this run with: \n"
                       << "./visualise.sh " << Comm->size() << " " << ArgParser::get_args()
                       << std::endl;

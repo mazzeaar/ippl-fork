@@ -9,7 +9,11 @@ TODO:
 namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
-                                                               morton_code code_b) {
+        morton_code code_b) {
+
+        IpplTimings::TimerRef completeRegionTimer = IpplTimings::getTimer("complete_region");
+        IpplTimings::startTimer(completeRegionTimer);
+        
         assert(code_a < code_b);
         std::cerr << "Past abort in algo2" << std::endl;
 
@@ -29,7 +33,7 @@ namespace ippl {
             morton_code current_node = stack.top();
             stack.pop();
 
-            bool is_between_a_b   = (code_a < current_node) && (current_node < code_b);
+            bool is_between_a_b = (code_a < current_node) && (current_node < code_b);
             bool is_ancestor_of_a = morton_helper.is_ancestor(code_a, current_node);
             bool is_ancestor_of_b = morton_helper.is_ancestor(code_b, current_node);
 
@@ -40,7 +44,8 @@ namespace ippl {
                 }
                 min_lin_tree[idx] = current_node;
                 idx++;
-            } else if (is_ancestor_of_a || is_ancestor_of_b) {
+            }
+            else if (is_ancestor_of_a || is_ancestor_of_b) {
                 for (morton_code child : morton_helper.get_children(current_node)) {
                     stack.push(child);
                 }
@@ -53,6 +58,9 @@ namespace ippl {
         }
 
         std::sort(min_lin_tree.data(), min_lin_tree.data() + min_lin_tree.size());
+        
+        IpplTimings::stopTimer(completeRegionTimer);
+        
         return min_lin_tree;
     }
 }  // namespace ippl

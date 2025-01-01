@@ -13,7 +13,7 @@ namespace ippl {
 
     template <size_t Dim>
     OrthoTree<Dim>::OrthoTree(size_t max_depth, size_t max_particles_per_node,
-                              const bounds_t& root_bounds)
+        const bounds_t& root_bounds)
         : max_depth_m(max_depth)
         , max_particles_per_node_m(max_particles_per_node)
         , root_bounds_m(root_bounds)
@@ -43,16 +43,19 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::build_tree_naive(particle_t const& particles) {
         // this needs to be initialized before constructing the tree
         this->aid_list_m.initialize(root_bounds_m, particles);
+        IpplTimings::TimerRef timer = IpplTimings::getTimer("build_tree");
+        IpplTimings::startTimer(timer);
 
         // without the step below the parallel/sequential trees can never be identical, as the
         // parallel version never contains the root node
         morton_code root_octant(0);
-        auto octants                             = morton_helper.get_children(root_octant);
+        auto octants = morton_helper.get_children(root_octant);
         Kokkos::View<morton_code*> finished_tree = build_tree_from_octants(octants);
 
         particles_to_file(particles);
         octants_to_file(finished_tree);
 
+        IpplTimings::stopTimer(timer);
         return finished_tree;
     }
 
