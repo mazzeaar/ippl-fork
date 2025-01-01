@@ -15,7 +15,7 @@ namespace ippl {
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> octants) {
+    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> arg_octants) {
 
         IpplTimings::TimerRef completeTreeTimer = IpplTimings::getTimer("complete_tree");
         IpplTimings::startTimer(completeTreeTimer);
