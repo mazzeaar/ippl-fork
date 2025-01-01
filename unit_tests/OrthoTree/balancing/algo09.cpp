@@ -82,6 +82,7 @@ TEST(RipplePropagation, TestTest) {
     tree_view(8) = morton.encode({0, 4}, 1);
     tree_view(9) = morton.encode({4, 4}, 1);
 
+    std::sort(tree_view.data(), tree_view.data() + tree_view.size());
     auto balanced_tree = tree.algo9(tree_view);
 
     Kokkos::View<morton_code*> expected("expected", 19);
@@ -105,7 +106,7 @@ TEST(RipplePropagation, TestTest) {
     
     EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
     for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
-        EXPECT_EQ(balanced_tree(i), expected(i))
+        ASSERT_EQ(balanced_tree(i), expected(i))
           << "expected=" << morton.decode(expected(i)) 
           << ", actual=" << morton.decode(balanced_tree(i));
     }
