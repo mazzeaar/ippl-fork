@@ -18,6 +18,13 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> arg_octants) {
         // this removes duplicates, inefficient as of now
         Kokkos::View<morton_code*> octants = arg_octants;
+
+        logger.setOutputLevel(1);
+        logger << level1 << "Complete tree called with octants: " << endl;
+        for (size_t i = 0; i < octants.size(); i++) {
+            logger << level1 << "octants(" << i << "): " << octants(i) << endl;
+        }
+
         std::map<morton_code, int> m;
         for (auto octant : std::span(octants.data(), octants.size())) {
             ++m[octant];
@@ -28,6 +35,11 @@ namespace ippl {
         for (const auto [octant, count] : m) {
             octants[octants_idx] = octant;
             octants_idx++;
+        }
+
+        logger << level1 << "Removed duplicates from octants." << endl;
+        for (size_t i = 0; i < octants.size(); i++) {
+            logger << level1 << "octants(" << i << "): " << octants(i) << endl;
         }
 
         octants = linearise_octants(octants);
@@ -42,30 +54,40 @@ namespace ippl {
         Kokkos::resize(octants, octants.size() + 1);
 
         morton_code first_rank0;
+        logger.setOutputLevel(1);
+        logger << level1 << "world_rank: " << world_rank << endl;
+        logger << level1 << "world_size: " << world_size << endl;
+        
         if (world_rank == 0) {
             const morton_code dfd_root = morton_helper.get_deepest_first_descendant(morton_code(0));
             const morton_code A_finest =
                 morton_helper.get_nearest_common_ancestor(dfd_root, octants[0]);
 
             first_rank0 = morton_helper.get_first_child(A_finest);
-        } else if (world_rank == world_size - 1) {
+        }
+        if (world_rank == world_size - 1) {
             const morton_code dld_root = morton_helper.get_deepest_last_descendant(morton_code(0));
+            logger << level1 << "dld_root: " << dld_root << endl;
             const morton_code A_finest =
                 morton_helper.get_nearest_common_ancestor(dld_root, octants[octants.size() - 2]);
+            logger << level1 << "A_finest: " << A_finest << endl;
             const morton_code last_child = morton_helper.get_last_child(A_finest);
+            logger << level1 << "last_child: " << last_child << endl;
 
             octants[octants.size() - 1] = last_child;
         }
 
         if (world_rank > 0) {
+            logger << level1 << "Rank " << world_rank << " sending octant: " << *octants.data() << "." << endl;
             Comm->send(*octants.data(), 1, world_rank - 1, 0);
         }
 
         morton_code buff;
         if (world_rank < world_size - 1) {
             mpi::Status status;
+            logger << level1 << "Algo3, Buffer before recv: " << buff << endl;
             Comm->recv(&buff, 1, world_rank + 1, 0, status);
-
+            logger << level1 << "Algo3, Buffer after recv: " << buff << endl;
             // do we need a status check here or not?
             octants[octants.size() - 1] = buff;
         }
@@ -122,6 +144,10 @@ namespace ippl {
             Kokkos::resize(R_view, R_index);
         }
 
+        logger << level1 << "Complete tree done, printing R_view" << endl;
+        for (size_t i = 0; i < R_view.size(); i++) {
+            logger << level1 << "R_view(" << i << "): " << R_view(i) << endl;
+        }
         return R_view;
     }
 }  // namespace ippl

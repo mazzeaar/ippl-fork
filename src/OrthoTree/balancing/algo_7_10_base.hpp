@@ -17,6 +17,10 @@ namespace ippl {
     template <size_t algo_nr>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo_7_10_base(
         const morton_code octant_N, Kokkos::View<morton_code*> partial_descendants_L) {
+        if(partial_descendants_L.size() == 1 && octant_N == partial_descendants_L(0)){
+            return partial_descendants_L;
+        }
+
         const size_t depth_N = morton_helper.get_depth(octant_N);
 
         Kokkos::View<morton_code*> W( "W", partial_descendants_L.size());

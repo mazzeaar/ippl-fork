@@ -144,6 +144,11 @@ TEST(BalancingTest, TestTest) {
      tree_view(8) = morton.encode({0, 4}, 1);
      tree_view(9) = morton.encode({4, 4}, 1);
 
+     std::sort(tree_view.data(), tree_view.data() + tree_view.size());
+     for (int i = 0; i < tree_view.size(); ++i) {
+         std::cerr << "tree_view(" << i << "): " << tree_view(i) << std::endl;
+     }
+
      auto balanced_tree = tree.algo11(tree_view);
 
      Kokkos::View<morton_code*> expected("expected", 19);

@@ -47,9 +47,10 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo4_11(Kokkos::View<morton_code*> F_view) {
         assert(F_view.size() > 0 && "Size missmatch");
-        const morton_code min_oct = morton_helper.get_deepest_first_descendant(F_view(0));
-        const morton_code max_oct =
-            morton_helper.get_deepest_first_descendant(F_view(F_view.size() - 1));
+        logger.setOutputLevel(1);
+        logger << "Test in algo4_11" << endl;
+        const morton_code min_oct = F_view(0);
+        const morton_code max_oct = F_view(F_view.size() - 1);
         Kokkos::View<morton_code*> T = complete_region(min_oct, max_oct);
 
         // the lowest level is actually the 'highest' (closest to root) node in our tree
@@ -91,7 +92,19 @@ namespace ippl {
         Kokkos::View<morton_code*> G = complete_tree(C);
 
         Kokkos::View<size_t*> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
-        Kokkos::View<morton_code*> octants = partition(G, weights);
+        
+        // TODO is temporary for testing algo11
+        Kokkos::View<size_t*> weights_view("weights_view", G.size());
+        for (size_t i = 0; i < G.size(); ++i) {
+            weights_view[i] = 1;
+        }
+
+        logger.setOutputLevel(1);
+        logger << level1 << "Printing weights for the second partition." << endl;
+        for (size_t i = 0; i < weights.size(); i++) {
+            logger << level1 << "weights_two(" << i << "): " << weights(i) << endl;
+        }
+        Kokkos::View<morton_code*> octants = partition(G, weights_view);
 
         // update with F_glob
         return octants;

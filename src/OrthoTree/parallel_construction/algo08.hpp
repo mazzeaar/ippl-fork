@@ -16,7 +16,7 @@ namespace ippl {
 
         size_t j = 0;
         for (size_t i = 0; i < octants.size() - 1; ++i) {
-            if (morton_helper.is_ancestor(octants[i + 1], octants[i])) {
+            if (octants[i] == octants[i+1] || morton_helper.is_ancestor(octants[i + 1], octants[i])) {
                 continue;
             }
 
