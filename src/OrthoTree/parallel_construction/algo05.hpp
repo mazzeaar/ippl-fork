@@ -26,12 +26,6 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants,
                                                          Kokkos::View<size_t*> weights) {
 
-        logger.setOutputLevel(1);
-        logger << level1 << "Partition called with octants: " << endl;
-        for (size_t i = 0; i < octants.size(); i++) {
-            logger << level1 << "octants(" << i << "): " << octants(i) << endl;
-        }
-
         START_FUNC;
         Kokkos::View<morton_code*> prefix_sum("prefix_sum", octants.size());
 
@@ -54,12 +48,6 @@ namespace ippl {
         // get the global total weight 
         Comm->scan(&local_total, &local_prefix, 1, std::plus<size_t>());
 
-        logger.setOutputLevel(1);
-        logger << level1 << "Printing Prefix_sum." << endl;
-        for (size_t i = 0; i < prefix_sum.size(); i++) {
-            logger << level1 << "prefix_sum(" << i << "): " << prefix_sum(i) << endl;
-        }
-      
         // broadcast the global total weight
         global_total = local_prefix;
         // last rank will have the global total weight as it's local_prefix
@@ -185,11 +173,6 @@ namespace ippl {
             request[req_idx].wait();
         }
         Comm->barrier();
-        logger.setOutputLevel(1);
-        logger << level1 << "Rank " << world_rank << " has " << partitioned_octants.size() << " octants." << endl;
-        for (size_t i = 0; i < partitioned_octants.size(); i++) {
-            logger << level1 << "partitioned_octants(" << i << "): " << partitioned_octants(i) << endl;
-        }
         return partitioned_octants;
     }
 }  // namespace ippl

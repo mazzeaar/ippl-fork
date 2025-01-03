@@ -10,8 +10,6 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
                                                                morton_code code_b) {
-        logger.setOutputLevel(1);
-        logger << level1 << "Code a: " << code_a << ", Code b: " << code_b << endl;
         assert(code_a < code_b);
 
         size_t estimated_size = 79;  // should never have to resize with this
@@ -54,9 +52,6 @@ namespace ippl {
         }
 
         std::sort(min_lin_tree.data(), min_lin_tree.data() + min_lin_tree.size());
-        for (int i = 0; i < min_lin_tree.size(); ++i) {
-            logger << level1 << "Algo2, min_lin_tree(" << i << "): " << min_lin_tree(i) << " ; " << morton_helper.decode(min_lin_tree(i)) << endl;
-        }
         return min_lin_tree;
     }
 }  // namespace ippl
