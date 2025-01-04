@@ -319,8 +319,6 @@ namespace ippl {
                 Glob_view.get(source_span.begin(), std::prev(source_span.end()), source_rank, 0);
             }
 
-            offsets(source_rank) = send_idx;
-
             {  // do stuff with data
                 auto contains = [&](const auto& i_layer, const morton_code search_code) -> bool {
                     return std::any_of(
@@ -352,6 +350,8 @@ namespace ippl {
                         ++send_idx;
                     }
                 }
+
+                offsets(source_rank) = send_idx;
             }
         }
 
@@ -500,54 +500,147 @@ namespace ippl {
         Comm->barrier();
         logger << level1 << "Got after barrier after G_view" << endl;
 
+        /**
+         * overlapping_octants is a flat view of the octants we send.
+         * overlap_offsets is a prefix sum (?!), where overlap_offsets(0) = send_size rank 0
+         */
         auto [overlapping_octants, overlap_offsets] =
             inter_proc_boundaries(morton_helper, G_view, B_view);
         logger << level1 << "overlaps ok" << endl;
 
-        Kokkos::View<morton_code*> T_view;
-        // TODO receive octants into T_view
+        /**
+         * Main idea:
+         * - each rank puts the amount of octants it will send into the corresponding size_window
+         * (recv_sizes)
+         * - using this information each rank can initialise its T_view and the other ranks can look
+         * up the insertion offsets
+         */
 
-        for (size_t i = 0; i < T_view.size(); ++i) {
-            const auto i_layer = morton_helper.get_insulation_layer(T_view(i));
-            auto contains      = [&](const auto& i_layer, const morton_code search_code) -> bool {
-                return std::any_of(
-                    i_layer.data(), i_layer.data() + i_layer.size(), [&](const morton_code i_oct) {
-                        return (i_oct == search_code)
-                               || (this->morton_helper.is_descendant(search_code, i_oct)
-                                   || this->morton_helper.is_descendant(i_oct, search_code));
-                    });
-            };
+        mpi::rma::Window<mpi::rma::Active> size_window;
+        mpi::rma::Window<mpi::rma::Active> T_window;
+        Kokkos::View<size_t*> recv_sizes("recv_sizes", world_size);
+        Kokkos::deep_copy(recv_sizes, 0);
+        size_t total_recv_size = 0;
 
-            const size_t rank_t = 0;  // TODO
+        /**
+         * Put the sizes that each rank will receive into its window
+         * TODO: this should probably be a prefix sum?
+         */
+        {
+            auto size_span = std::span(recv_sizes.data(), recv_sizes.size());
+            size_window.create(*Comm, size_span.begin(), size_span.end());
+            size_window.fence(0);
 
-            for (size_t j = 0; j < G_view.size(); ++j) {
-                const morton_code G_oct = G_view(i);
-
-                const bool contains = std::any_of(
-                    i_layer.data(), i_layer.data() + i_layer.size(), [&](const morton_code i_oct) {
-                        return (i_oct == G_oct) || this->morton_helper.is_descendant(G_oct, i_oct)
-                               || this->morton_helper.is_descendant(i_oct, G_oct);
-                    });
-
-                const size_t start          = overlap_offsets(rank_t);
-                const size_t end            = (rank_t + 1 < world_size) ? overlap_offsets(rank_t)
-                                                                        : overlapping_octants.size();
-                const bool was_already_sent = std::binary_search(
-                    overlapping_octants.data() + start, overlapping_octants.data() + end, G_oct);
-
-                if (was_already_sent || !contains) {
+            size_t size_buff = 0;
+            for (size_t target_rank = 0; target_rank < world_size; ++target_rank) {
+                if (target_rank == world_rank) {
                     continue;
                 }
 
-                // send G_oct TODO
+                size_buff = (target_rank == 0
+                                 ? overlap_offsets(0)
+                                 : overlap_offsets(target_rank - 1) - overlap_offsets(target_rank));
+
+                size_window.put(&size_buff, target_rank, world_rank);
+                size_window.fence(0);
+            }
+
+            Kokkos::parallel_reduce(
+                "compute new size", world_size,
+                KOKKOS_LAMBDA(const size_t i, size_t& local_new_size) {
+                    local_new_size += recv_sizes(i);
+                },
+                total_recv_size);
+        }
+
+        Kokkos::View<morton_code*> T_view("T_view", total_recv_size);
+
+        /**
+         * Put necessary data into each ranks window
+         */
+        {
+            auto overlapping_octants_span =
+                std::span(overlapping_octants.data(), overlapping_octants.size());
+            auto T_span = std::span(T_view.data(), T_view.size());
+
+            T_window.create(*Comm, T_span.begin(), T_span.end());
+            T_window.fence(0);
+
+            size_t start = 0;
+            size_t end   = 0;
+            for (size_t target_rank = 0; target_rank < world_size; ++target_rank) {
+                start = end;
+                end += recv_sizes(target_rank);
+                if (target_rank == world_rank) {
+                    continue;
+                }
+
+                // TODO: world_rank is wrong as pos, this must be looked up in size_window of the
+                // target_rank :,) -> hence prefix sum
+                auto start_iter = overlapping_octants_span.begin() + start;
+                auto end_iter   = overlapping_octants_span.begin() + end;
+                T_window.put(start_iter, end_iter, target_rank, target_rank);
+                T_window.fence(0);
             }
         }
-        //PRINT_VIEW(T_view);
 
+        /**
+         * Each rank should now have all the octants it needs
+         */
+
+        /**
+         * corresponds to line 15-23 of ps.code
+         */
+        {
+            /**
+             * Checks if we already sent the search_oct to the target_rank
+             */
+            auto already_sent =
+                KOKKOS_LAMBDA(const morton_code search_oct, const size_t target_rank) {
+                const size_t start   = overlap_offsets(target_rank);
+                const size_t end     = (target_rank + 1 == world_size)
+                                           ? overlap_offsets(target_rank + 1)
+                                           : overlapping_octants.size();
+                const auto sent_octs = std::span(overlapping_octants.data() + start, end - start);
+                return std::find(sent_octs.begin(), sent_octs.end(), search_oct) != sent_octs.end();
+            };
+
+            for (size_t i = 0; i < T_view.size(); ++i) {
+                const morton_code T_oct = T_view(i);
+                const auto i_layer_view = morton_helper.get_insulation_layer(T_oct);
+                const auto i_layer      = std::span(i_layer_view.data(), i_layer_view.size());
+
+                auto contains = KOKKOS_LAMBDA(const morton_code search_oct) {
+                    return std::find(i_layer.begin(), i_layer.end(), search_oct) != i_layer.end();
+                };
+
+                // i *think* this should initialise rank_t correctly
+                size_t rank_t = 0;
+                while (i <= recv_sizes(rank_t)) {
+                    ++rank_t;
+                }
+
+                for (size_t j = 0; j < G_view.size(); ++j) {
+                    const morton_code G_oct = G_view(i);
+                    if (!contains(G_oct)) {
+                        continue;
+                    }
+
+                    if (already_sent(G_oct, rank_t)) {
+                        continue;
+                    }
+
+                    // TODO: prepare the data to send
+                    // Send(G_oct, rank_t)
+                }
+            }
+        }
+
+        // TODO: send the data generated in the loop above
         Kokkos::View<morton_code*> K_view;
         // TODO receive octants into K_view
 
-        auto H_view = algo9(concatenateViews(G_view /*, T_view, K_view */));
+        auto H_view = algo9(concatenateViews(G_view, T_view /*, K_view */));
         LOG << "H_view ok" << endl;
         //std::sort(R_view.data(), R_view.data() + R_view.size());
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
