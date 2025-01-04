@@ -101,6 +101,26 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> build_tree(particle_t const& particles);
 
+        Kokkos::View<morton_code*> balance_tree_naive(Kokkos::View<morton_code*> tree) {
+            auto balanced_tree = algo7(morton_code(0), tree);
+            octants_to_file(balanced_tree);
+            return balanced_tree;
+        }
+
+        Kokkos::View<morton_code*> balance_tree_naive(particle_t const& particles) {
+            return balance_tree_naive(build_tree_naive(particles));
+        }
+
+        Kokkos::View<morton_code*> balance_tree(Kokkos::View<morton_code*> tree) {
+            auto balanced_tree = algo11(tree);
+            octants_to_file(balanced_tree);
+            return balanced_tree;
+        }
+
+        Kokkos::View<morton_code*> balance_tree(particle_t const& particles) {
+            return balance_tree(build_tree(particles));
+        }
+
         /**
          * ALGO 2
          *
