@@ -335,7 +335,9 @@ namespace ippl {
                 };
 
                 // naive for now, im lazy
+                bool new_insert = true;
                 for (size_t i = 0; i < B_view.size(); ++i) {
+                    new_insert = true;
                     const morton_code B_oct     = B_view(i);
                     const auto insulation_layer = morton_helper.get_insulation_layer(B_oct);
 
@@ -349,10 +351,18 @@ namespace ippl {
                             Kokkos::resize(data_to_send,
                                            data_to_send.size() + data_to_send_base_size);
                         }
-
-                        data_to_send(send_idx) = B_oct;
-                        ++offset;
-                        ++send_idx;
+                        if(!new_insert){
+                            if(data_to_send(send_idx-1) != B_oct){
+                                data_to_send(send_idx) = B_oct;
+                                ++offset;
+                                ++send_idx;
+                            }
+                        } else{
+                            new_insert = false;
+                            data_to_send(send_idx) = B_oct;
+                            ++offset;
+                            ++send_idx;
+                        }
                     }
                 }
 
