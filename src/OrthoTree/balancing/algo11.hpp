@@ -335,8 +335,8 @@ namespace ippl {
                     return std::any_of(i_layer.data(), i_layer.data() + i_layer.size(),
                                        [&](const morton_code i_oct) {
                                            return (i_oct == search_code)
-                                                  || morton_helper.is_descendant(search_code,
-                                                                                 i_oct);
+                                                  || morton_helper.is_descendant(i_oct,
+                                                                                 search_code);
                                        });
                 };
 
@@ -345,11 +345,20 @@ namespace ippl {
                 for (size_t i = 0; i < B_view.size(); ++i) {
                     new_insert = true;
                     const morton_code B_oct     = B_view(i);
-                    const auto insulation_layer = morton_helper.get_insulation_layer(B_oct);
+                     auto insulation_layer = morton_helper.get_insulation_layer(B_oct);
+                    std::string log_str = "Logging on rank " + std::to_string(Comm->rank())
+                                          + ", octant " + std::to_string(B_oct) + " insulation layer = ";
+                    for (int i = 0; i < insulation_layer.size(); i++) {
+                        log_str += std::to_string(insulation_layer.at(i));
+                        if (i != insulation_layer.size() - 1)
+                            log_str += ", ";
+                    }
+                    log_str += "}";
+                    std::cerr << log_str << std::endl;
 
                     for (size_t j = 0; j < source_data.size(); ++j) {
                         const morton_code Glob_oct = source_data(j);
-                        if (contains(insulation_layer, Glob_oct)) {
+                        if (!contains(insulation_layer, Glob_oct)) {
                             continue;
                         }
 
