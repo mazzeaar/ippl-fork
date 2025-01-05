@@ -243,22 +243,10 @@ namespace ippl {
                                                  Kokkos::View<morton_code*> H_view,
                                                  Kokkos::View<morton_code*> F_view) {
         auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_insert) {
-            Kokkos::View<morton_code*> neighbour_view =
-                get_neighbour_view(morton_helper, octant_to_insert);
-
-            for (size_t i = 0; i < neighbour_view.size(); ++i) {
-                const morton_code neighbour_oct = neighbour_view[i];
-                for (size_t j = 0; j < B_view.size(); ++j) {
-                    const morton_code B_oct = B_view[j];
-
-                    const bool overlaps_neighbour =
-                        morton_helper.does_overlap(neighbour_oct, B_oct);
-                    if (overlaps_neighbour) {
-                        return true;
-                    }
-                }
+            for(int i = 0; i < B_view.size(); i++){
+                auto b_oct = B_view(i);
+                if(b_oct == octant_to_insert || morton_helper.is_ancestor(octant_to_insert, b_oct)) return true;
             }
-
             return false;
         };
 
@@ -342,8 +330,7 @@ namespace ippl {
                         i_layer.data(), i_layer.data() + i_layer.size(),
                         [&](const morton_code i_oct) {
                             return (i_oct == search_code)
-                                   || (morton_helper.is_descendant(search_code, i_oct)
-                                       || morton_helper.is_descendant(i_oct, search_code));
+                                       || morton_helper.is_descendant(search_code, i_oct);
                         });
                 };
 
@@ -621,7 +608,7 @@ namespace ippl {
 
             size_t start = 0;
             size_t end   = 0;
-            size_t target_idx = 1;
+            size_t target_idx = 0;
             for (size_t target_rank = 0; target_rank < world_size; ++target_rank) {
                 start = end;
                 end += overlap_offsets(target_rank);
@@ -636,22 +623,16 @@ namespace ippl {
                 // target_rank :,) -> hence prefix sum
                 auto start_iter = T_span.begin() + total_recv_size+ start;
                 auto end_iter   = T_span.begin() + total_recv_size+ end;
-                logger << level1 << "Getting target_idx for rank " << target_rank << endl;
                 size_t dis = 0;
                 if(world_rank != 0){
                     dis = world_rank - 1;
                     size_window.get(&target_idx, target_rank, dis);
                 }
                 size_window.fence(0);                
-                logger << level1 << "Got after first fence for size_window" << endl;
-                logger << level1 << "target_idx: " << target_idx << endl;
                 if(start != end){
 
-                    logger << level1 << "Putting octants in T_window of rank " << std::to_string(target_rank) << " from start: " << start << " to end: " << end << endl;
                     T_window.put(start_iter, end_iter, target_rank, target_idx);
 
-                    logger << level1 << "Put octants in T_window, now waiting for fence from start: " << start << " to end: " << end << endl;
-                    logger << level1 << "Put octants in T_window from start: " << start << " to end: " << end << endl;
                 }
                 T_window.fence(0);
             }
@@ -694,11 +675,11 @@ namespace ippl {
 
                 // i *think* this should initialise rank_t correctly
                 size_t rank_t = 0;
-                logger << level1 << "possible infinite loop" << endl;
+                //logger << level1 << "possible infinite loop" << endl;
                 while (i <= recv_sizes(rank_t)) {
                     ++rank_t;
                 }
-                logger << level1 << "Actually not an infinite loop" << endl;
+                //logger << level1 << "Actually not an infinite loop" << endl;
 
                 for (size_t j = 0; j < G_view.size(); ++j) {
                     const morton_code G_oct = G_view(i);
