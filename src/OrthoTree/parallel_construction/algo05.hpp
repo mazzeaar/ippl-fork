@@ -26,6 +26,10 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants,
                                                          Kokkos::View<size_t*> weights) {
 
+        logger << level1 << "Partition called with octants of size: " << octants.size() << endl;
+        for (int i = 0; i < octants.size(); i++) {
+            logger << level1 << "octants(" << i << "): " << octants(i) << endl;
+        }
         START_FUNC;
         Kokkos::View<morton_code*> prefix_sum("prefix_sum", octants.size());
 
@@ -173,6 +177,11 @@ namespace ippl {
             request[req_idx].wait();
         }
         Comm->barrier();
+
+        logger << level1 << "Rank " << Comm->rank() << " partitioned octants of size:" << partitioned_octants.size() << endl;
+        for (int i = 0; i < partitioned_octants.size(); i++) {
+            logger << level1 << "partitioned_octants(" << i << "): " << partitioned_octants(i) << endl;
+        }
         return partitioned_octants;
     }
 }  // namespace ippl

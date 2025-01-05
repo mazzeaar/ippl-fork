@@ -21,8 +21,8 @@ namespace ippl {
         // tree.
         Kokkos::View<morton_code*> tree_view = build_tree_from_octants(octants);
 
-        // octants_to_file(tree_view);
-        // print_stats(tree_view, particles);
+        octants_to_file(tree_view);
+        print_stats(tree_view, particles);
 
         return tree_view;
     }

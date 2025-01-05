@@ -10,6 +10,7 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::complete_region(morton_code code_a,
                                                                morton_code code_b) {
+        logger << level1 << "Algo2, octant a: " << code_a << ", octant b: " << code_b << endl;
         assert(code_a < code_b);
 
         size_t estimated_size = 79;  // should never have to resize with this

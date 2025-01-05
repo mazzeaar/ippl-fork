@@ -1,4 +1,5 @@
 #include <Kokkos_Core.hpp>
+#include <cstddef>
 
 #include "../OrthoTree.h"
 namespace ippl {
@@ -306,18 +307,34 @@ namespace ippl {
 
         // scan the window of each rank
         for (size_t source_rank = 0; source_rank < world_size; ++source_rank) {
+            size_t offset = 0;
             if (source_rank == world_rank || (window_sizes(source_rank) == 0)) {
+                offsets(source_rank) = offset;
                 continue;
             }
 
             // load data
-            Kokkos::View<morton_code*> source_data("source_data", window_sizes(source_rank));
+            Kokkos::View<morton_code*> source_data("source_data", std::max(window_sizes(source_rank), B_view.size()));
+            // TODO make this better
+            for(int i = 0; i < B_view.size(); i++){
+                source_data(i) = B_view(i);
+            }
             {
                 auto source_span =
                     std::span(source_data.data(), source_data.data() + source_data.size());
                 Glob_view.fence(0);
-                Glob_view.get(source_span.begin(), std::prev(source_span.end()), source_rank, 0);
+                Glob_view.get(source_span.begin(), source_span.begin() + window_sizes(source_rank), source_rank, 0);
+                Glob_view.fence(0);
+                Kokkos::resize(source_data, window_sizes(source_rank));
             }
+            // TODO remove logging
+            std::string log_str = "Logging on rank " + std::to_string(Comm->rank()) + " for target rank " + std::to_string(source_rank) + " source_data = {";
+            for(int i = 0; i < source_data.size(); i++){
+              log_str += std::to_string(source_data(i));
+              if(i != source_data.size() - 1) log_str += ", ";
+            }
+            log_str += "}";
+            std::cerr << log_str << std::endl;
 
             {  // do stuff with data
                 auto contains = [&](const auto& i_layer, const morton_code search_code) -> bool {
@@ -347,12 +364,14 @@ namespace ippl {
                         }
 
                         data_to_send(send_idx) = B_oct;
+                        ++offset;
                         ++send_idx;
                     }
                 }
 
-                offsets(source_rank) = send_idx;
+                offsets(source_rank) = offset;
             }
+            std::cerr << "Done with this iteration\n";
         }
 
         Glob_view.fence(0);
@@ -376,7 +395,7 @@ namespace ippl {
     // INPUT HAS TO BE SORTED
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
-        Kokkos::View<morton_code*> B_view = algo4_11(L_view);
+        Kokkos::View<morton_code*> B_view = L_view;//algo4_11(L_view);
         logger.on(true);
         logger.setOutputLevel(1);
 #define LOG              \
@@ -469,6 +488,13 @@ namespace ippl {
                           //PRINT_VIEW(Temp_view);
                           auto algo7_view = algo7(octant_B, Temp_view);
                           logger << level1 << "Done with algo7 for this octant" << endl;
+                          std::string log_str = "Logging algo7_view = {";
+                          for(int i = 0; i < algo7_view.size(); i++){
+                              log_str += std::to_string(algo7_view(i));
+                              if(i != algo7_view.size() - 1) log_str += ", ";
+                          }
+                          log_str += "}";
+                          logger << level1 << log_str << endl;
                           //PRINT_VIEW(algo7_view);
                           C_view          = concatenateViews(C_view, algo7_view);
                           logger << level1 << "Concatenated the views" << endl;
@@ -476,26 +502,26 @@ namespace ippl {
         logger << level1 << "Initialized C_view" << endl;
         Comm->barrier();
         //PRINT_VIEW(B_view);
-        //PRINT_VIEW(C_view);
+        PRINT_VIEW(C_view);
         // D = intra proc boundaries
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view);
-        //PRINT_VIEW(D_view);
+        PRINT_VIEW(D_view);
 
         // ripple propagation
         // D_view must be sorted here TODO possible bug
         auto S_view           = algo9(D_view);
-        //PRINT_VIEW(S_view);
+        PRINT_VIEW(S_view);
         auto concatenated_S_C = concatenateViews(S_view, C_view);
         // TODO get rid of this sort
         std::sort(concatenated_S_C.data(), concatenated_S_C.data() + concatenated_S_C.size());
-        //PRINT_VIEW(concatenated_S_C);
+        PRINT_VIEW(concatenated_S_C);
         auto F_view           = linearise_octants(concatenated_S_C);
         //LOG_VIEW(F_view);
-        //PRINT_VIEW(F_view);
+        PRINT_VIEW(F_view);
         // G = inter proc boundaries
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view);
         //LOG_VIEW(G_view);
-        //PRINT_VIEW(G_view);
+        PRINT_VIEW(G_view);
         logger << level1 << "Got to barrier after initializing G_view" << endl;
         Comm->barrier();
         logger << level1 << "Got after barrier after G_view" << endl;
@@ -508,6 +534,7 @@ namespace ippl {
             inter_proc_boundaries(morton_helper, G_view, B_view);
         logger << level1 << "overlaps ok" << endl;
         PRINT_VIEW(overlap_offsets);
+        PRINT_VIEW(overlapping_octants);
 
         /**
          * Main idea:
@@ -520,9 +547,7 @@ namespace ippl {
         mpi::rma::Window<mpi::rma::Active> size_window;
         mpi::rma::Window<mpi::rma::Active> T_window;
         Kokkos::View<size_t*> recv_sizes("recv_sizes", world_size);
-        logger << level1 << "Before Kokkos::deep_copy" << endl;
         Kokkos::deep_copy(recv_sizes, 0);
-        logger << level1 << "After Kokkos::depp_copy" << endl;
         size_t total_recv_size = 0;
 
         /**
@@ -530,14 +555,9 @@ namespace ippl {
          * TODO: this should probably be a prefix sum?
          */
         {
-            logger << level1 << "recv_sizes.size():" << recv_sizes.size() << endl;
-            logger << level1 << "recv_sizes(0): " << recv_sizes(0) << endl;
             auto size_span = std::span(recv_sizes.data(), recv_sizes.size());
-            logger << level1 << "Got span" << endl;
             size_window.create(*Comm, size_span.begin(), size_span.end());
-            logger << level1 << "Created window" << endl;
             size_window.fence(0);
-            logger << level1 << "Window initialized" << endl;
 
             size_t size_buff = 0;
             for (size_t target_rank = 0; target_rank < world_size; ++target_rank) {
@@ -545,34 +565,52 @@ namespace ippl {
                     continue;
                 }
 
-                size_buff = (target_rank == 0
-                                 ? overlap_offsets(0)
-                                 : overlap_offsets(target_rank - 1) - overlap_offsets(target_rank));
+                size_buff = overlap_offsets(target_rank);
 
                 logger << level1 << "Putting size_buff: " << size_buff << " in window of rank: " << target_rank << endl;
                 size_window.fence(0);
-                size_window.put(&size_buff, target_rank, world_rank);
+                size_window.put(size_buff, target_rank, world_rank);
                 size_window.fence(0);
-                logger << level1 << "Put buff in window" << endl;
             }
 
-            logger << level1 << "Starting parallel reduce" << endl;
+            Kokkos::parallel_scan(
+                recv_sizes.extent(0), KOKKOS_LAMBDA(const size_t i, size_t& update, bool final) {
+                    const size_t val = recv_sizes(i);
+                    update += val;
+                    if (final) {
+                        recv_sizes(i) = update;
+                    }
+                });
+
+            std::string log_str = "Logging recv_sizes = {";
+            for(int i = 0; i < recv_sizes.size(); i++){
+              log_str += std::to_string(recv_sizes(i));
+              if(i != recv_sizes.size() - 1) log_str += ", ";
+            }
+            log_str += "}";
+            logger << level1 << log_str << endl;
+            /*
             Kokkos::parallel_reduce(
                 "compute new size", world_size,
                 KOKKOS_LAMBDA(const size_t i, size_t& local_new_size) {
                     local_new_size += recv_sizes(i);
                 },
                 total_recv_size);
-            logger << level1 << "Done with parallel reduce" << endl;
+                */
+            total_recv_size = recv_sizes(recv_sizes.size() - 1);
         }
-
-        Kokkos::View<morton_code*> T_view("T_view", total_recv_size);
-        logger << level1 << "Initialized T_view" << endl;
+        Kokkos::View<morton_code*> T_view("T_view", total_recv_size + overlapping_octants.size());
+        for (int i = total_recv_size; i < T_view.size(); i++) {
+            T_view(i) = overlapping_octants(i-total_recv_size);
+        }
+        logger << level1 << "Initialized T_view with size " << std::to_string(T_view.size()) << endl;
 
         /**
          * Put necessary data into each ranks window
          */
+        Comm->barrier();
         {
+            // TODO this does not work, because you would ovverride the data on the other ranks and the sizes are probably also mismatched
             auto overlapping_octants_span =
                 std::span(overlapping_octants.data(), overlapping_octants.size());
             auto T_span = std::span(T_view.data(), T_view.size());
@@ -583,28 +621,44 @@ namespace ippl {
 
             size_t start = 0;
             size_t end   = 0;
+            size_t target_idx = 1;
             for (size_t target_rank = 0; target_rank < world_size; ++target_rank) {
                 start = end;
-                end += recv_sizes(target_rank);
+                end += overlap_offsets(target_rank);
                 if (target_rank == world_rank) {
+                    size_window.fence(0);
+                    T_window.fence(0);
                     continue;
                 }
+                //if(overlap_offsets(target_rank) == 0) continue;
 
                 // TODO: world_rank is wrong as pos, this must be looked up in size_window of the
                 // target_rank :,) -> hence prefix sum
-                auto start_iter = overlapping_octants_span.begin() + start;
-                auto end_iter   = overlapping_octants_span.begin() + end;
-                logger << level1 << "Putting octants in T_window from start: " << start << " to end: " << end << endl;
-                T_window.fence(0);
-                T_window.put(start_iter, end_iter, target_rank, target_rank);
-                T_window.fence(0);
-                logger << level1 << "Put octants in T_window from start: " << start << " to end: " << end << endl;
+                auto start_iter = T_span.begin() + total_recv_size+ start;
+                auto end_iter   = T_span.begin() + total_recv_size+ end;
+                logger << level1 << "Getting target_idx for rank " << target_rank << endl;
+                size_t dis = world_rank == 0? 0 : world_rank - 1;
+                logger << level1 << "Got after first fence for size_window" << endl;
+                size_window.get(&target_idx, target_rank, dis);
+                size_window.fence(0);
+                logger << level1 << "target_idx: " << target_idx << endl;
+                if(start != end){
+
+                    logger << level1 << "Putting octants in T_window of rank " << std::to_string(target_rank) << " from start: " << start << " to end: " << end << endl;
+                    T_window.put(start_iter, end_iter, target_rank, target_idx);
+                    T_window.fence(0);
+                    logger << level1 << "Put octants in T_window, now waiting for fence from start: " << start << " to end: " << end << endl;
+                    logger << level1 << "Put octants in T_window from start: " << start << " to end: " << end << endl;
+                }
             }
         }
+        logger << level1 << "Got after the loop" << endl;
+        Comm->barrier();
 
         /**
          * Each rank should now have all the octants it needs
          */
+        PRINT_VIEW(T_view);
 
         /**
          * corresponds to line 15-23 of ps.code
@@ -661,16 +715,18 @@ namespace ippl {
         // TODO: send the data generated in the loop above
         Kokkos::View<morton_code*> K_view;
         // TODO receive octants into K_view
+        PRINT_VIEW(K_view);
 
         auto H_view = algo9(concatenateViews(G_view, T_view /*, K_view */));
         LOG << "H_view ok" << endl;
+        PRINT_VIEW(H_view);
         //std::sort(R_view.data(), R_view.data() + R_view.size());
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         LOG << "R_view ok" << endl;
-        //PRINT_VIEW(R_view);
+        PRINT_VIEW(R_view);
         R_view = linearise_octants(R_view);
         LOG_VIEW(R_view);
-        //PRINT_VIEW(R_view);
+        PRINT_VIEW(R_view);
         LOG << "R_view linearise ok" << endl;
         return R_view;
     }

@@ -99,6 +99,7 @@ namespace ippl {
             weights_view[i] = 1;
         }
 
+        logger << level1 << "got weights, now starting partition" << endl;
         Kokkos::View<morton_code*> octants = partition(G, weights_view);
 
         // update with F_glob

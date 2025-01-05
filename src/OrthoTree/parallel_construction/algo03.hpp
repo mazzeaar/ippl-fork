@@ -40,8 +40,6 @@ namespace ippl {
 
         octants = partition(octants, weights_view);
 
-        Kokkos::resize(octants, octants.size() + 1);
-
         morton_code first_rank0;
         if (world_rank == 0) {
             const morton_code dfd_root = morton_helper.get_deepest_first_descendant(morton_code(0));
@@ -56,6 +54,7 @@ namespace ippl {
                 morton_helper.get_nearest_common_ancestor(dld_root, octants[octants.size() - 2]);
             const morton_code last_child = morton_helper.get_last_child(A_finest);
 
+            Kokkos::resize(octants, octants.size() + 1);
             octants[octants.size() - 1] = last_child;
         }
 
@@ -63,12 +62,15 @@ namespace ippl {
             Comm->send(*octants.data(), 1, world_rank - 1, 0);
         }
 
-        morton_code buff;
+        morton_code buff = 0;
         if (world_rank < world_size - 1) {
             mpi::Status status;
             Comm->recv(&buff, 1, world_rank + 1, 0, status);
             // do we need a status check here or not?
-            octants[octants.size() - 1] = buff;
+            if(buff != 0){
+                Kokkos::resize(octants, octants.size() + 1);
+                octants[octants.size() - 1] = buff;
+            }
         }
 
         size_t R_base_size = 100;

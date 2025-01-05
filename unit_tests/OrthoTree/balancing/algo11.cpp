@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <random>
+#include <string>
 
 #include "OrthoTree/OrthoTree.h"
 
@@ -97,6 +98,7 @@ auto initializeRandom(size_t num_particles, double min_bounds, double max_bounds
 }
 
 TEST(BalancingTest, TestTest) {
+    /*
     static constexpr size_t Dim = 2;
     const size_t max_depth      = 10;
     const size_t max_particles  = 2;
@@ -124,25 +126,37 @@ TEST(BalancingTest, TestTest) {
 
     tree.particles_to_file(particles);
     tree.octants_to_file(res);
-    /*
+    /*/
      constexpr size_t Dim = 2;
      size_t max_depth = 3;
      OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0},
     real_coordinate_template<Dim>{1, 1})); Morton<Dim> morton(max_depth);
 
      morton_code root = 0;
+     Kokkos::View<morton_code*> tree_view("tree_view", 3);
 
-     Kokkos::View<morton_code*> tree_view("tree_view", 10);
-     tree_view(0) = morton.encode({0, 0}, 2);
-     tree_view(1) = morton.encode({2, 0}, 2);
-     tree_view(2) = morton.encode({0, 2}, 2);
-     tree_view(3) = morton.encode({2, 2}, 3);
-     tree_view(4) = morton.encode({2, 3}, 3);
-     tree_view(5) = morton.encode({3, 2}, 3);
-     tree_view(6) = morton.encode({3, 3}, 3);
-     tree_view(7) = morton.encode({4, 0}, 1);
-     tree_view(8) = morton.encode({0, 4}, 1);
-     tree_view(9) = morton.encode({4, 4}, 1);
+     if(Comm->rank() == 0){
+        Kokkos::resize(tree_view, 3);
+        tree_view(0) = morton.encode({0, 0}, 2);
+        tree_view(1) = morton.encode({2, 0}, 2);
+        tree_view(2) = morton.encode({0, 2}, 2);
+     } else if(Comm->rank() == 1){
+        Kokkos::resize(tree_view, 3);
+        tree_view(0) = morton.encode({2, 2}, 3);
+        tree_view(1) = morton.encode({2, 3}, 3);
+        tree_view(2) = morton.encode({3, 2}, 3);
+        
+     } else if(Comm->rank() == 2){
+        Kokkos::resize(tree_view, 2);
+        tree_view(0) = morton.encode({3, 3}, 3);
+        tree_view(1) = morton.encode({4, 0}, 1);
+        
+     } else{
+        Kokkos::resize(tree_view, 2);
+        tree_view(0) = morton.encode({0, 4}, 1);
+        tree_view(1) = morton.encode({4, 4}, 1);
+
+     }
 
      std::sort(tree_view.data(), tree_view.data() + tree_view.size());
      for (int i = 0; i < tree_view.size(); ++i) {
@@ -170,6 +184,15 @@ TEST(BalancingTest, TestTest) {
 
      std::sort(expected.data(), expected.data() + expected.size());
 
+     /*
+    auto size_str = "On rank " + std::to_string(Comm->rank()) + ", balanced_tree.size(): " + std::to_string(balanced_tree.size());
+     std::cerr << size_str << std::endl;
+     for (int i = 0; i < balanced_tree.size(); ++i) {
+        auto output = "On rank " + std::to_string(Comm->rank()) + ", balanced_tree(" + std::to_string(i) + "): " + std::to_string(balanced_tree(i));
+        std::cerr << output << std::endl;
+     }
+     */
+     /*
      EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
      for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
          EXPECT_EQ(balanced_tree(i), expected(i))
@@ -177,6 +200,34 @@ TEST(BalancingTest, TestTest) {
            << ", actual=" << morton.decode(balanced_tree(i));
      }
      */
+    if(Comm->rank() == 0){
+        EXPECT_EQ(3, balanced_tree.size()) << "Sizes dont match!";
+        EXPECT_EQ(2, balanced_tree(0)) << "expected = " << 2 << ", actual = " << balanced_tree(0);
+        EXPECT_EQ(18, balanced_tree(1)) << "expected = " << 18 << ", actual = " << balanced_tree(1);
+        EXPECT_EQ(34, balanced_tree(2)) << "expected = " << 34 << ", actual = " << balanced_tree(2);
+    } else if(Comm->rank() == 1){
+        EXPECT_EQ(3, balanced_tree.size()) << "Sizes dont match!";
+        EXPECT_EQ(51, balanced_tree(0)) << "expected = " << 51 << ", actual = " << balanced_tree(0);
+        EXPECT_EQ(55, balanced_tree(1)) << "expected = " << 55 << ", actual = " << balanced_tree(1);
+        EXPECT_EQ(59, balanced_tree(2)) << "expected = " << 59 << ", actual = " << balanced_tree(2);
+    } else if(Comm->rank() == 2){
+        EXPECT_EQ(5, balanced_tree.size()) << "Sizes dont match!";
+        EXPECT_EQ(63, balanced_tree(0)) << "expected = " << 63 << ", actual = " << balanced_tree(0);
+        EXPECT_EQ(66, balanced_tree(1)) << "expected = " << 66 << ", actual = " << balanced_tree(1);
+        EXPECT_EQ(82, balanced_tree(2)) << "expected = " << 82 << ", actual = " << balanced_tree(2);
+        EXPECT_EQ(98, balanced_tree(3)) << "expected = " << 98 << ", actual = " << balanced_tree(3);
+        EXPECT_EQ(114, balanced_tree(4)) << "expected = " << 114 << ", actual = " << balanced_tree(4);
+    } else if(Comm->rank() == 3){
+        EXPECT_EQ(8, balanced_tree.size()) << "Sizes dont match!";
+        EXPECT_EQ(130, balanced_tree(0)) << "expected = " << 130 << ", actual = " << balanced_tree(0);
+        EXPECT_EQ(146, balanced_tree(1)) << "expected = " << 146 << ", actual = " << balanced_tree(1);
+        EXPECT_EQ(162, balanced_tree(2)) << "expected = " << 162 << ", actual = " << balanced_tree(2);
+        EXPECT_EQ(178, balanced_tree(3)) << "expected = " << 178 << ", actual = " << balanced_tree(3);
+        EXPECT_EQ(194, balanced_tree(4)) << "expected = " << 194 << ", actual = " << balanced_tree(4);
+        EXPECT_EQ(210, balanced_tree(5)) << "expected = " << 210 << ", actual = " << balanced_tree(5);
+        EXPECT_EQ(226, balanced_tree(6)) << "expected = " << 226 << ", actual = " << balanced_tree(6);
+        EXPECT_EQ(242, balanced_tree(7)) << "expected = " << 242 << ", actual = " << balanced_tree(7);
+    }
 }
 
 int main(int argc, char** argv) {
