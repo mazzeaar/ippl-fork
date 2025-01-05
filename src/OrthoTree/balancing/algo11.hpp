@@ -637,20 +637,25 @@ namespace ippl {
                 auto start_iter = T_span.begin() + total_recv_size+ start;
                 auto end_iter   = T_span.begin() + total_recv_size+ end;
                 logger << level1 << "Getting target_idx for rank " << target_rank << endl;
-                size_t dis = world_rank == 0? 0 : world_rank - 1;
+                size_t dis = 0;
+                if(world_rank != 0){
+                    dis = world_rank - 1;
+                    size_window.get(&target_idx, target_rank, dis);
+                }
+                size_window.fence(0);                
                 logger << level1 << "Got after first fence for size_window" << endl;
-                size_window.get(&target_idx, target_rank, dis);
-                size_window.fence(0);
                 logger << level1 << "target_idx: " << target_idx << endl;
                 if(start != end){
 
                     logger << level1 << "Putting octants in T_window of rank " << std::to_string(target_rank) << " from start: " << start << " to end: " << end << endl;
                     T_window.put(start_iter, end_iter, target_rank, target_idx);
-                    T_window.fence(0);
+
                     logger << level1 << "Put octants in T_window, now waiting for fence from start: " << start << " to end: " << end << endl;
                     logger << level1 << "Put octants in T_window from start: " << start << " to end: " << end << endl;
                 }
+                T_window.fence(0);
             }
+            Kokkos::resize(T_view, total_recv_size);
         }
         logger << level1 << "Got after the loop" << endl;
         Comm->barrier();

@@ -162,8 +162,17 @@ TEST(BalancingTest, TestTest) {
      for (int i = 0; i < tree_view.size(); ++i) {
          std::cerr << "tree_view(" << i << "): " << tree_view(i) << std::endl;
      }
+     auto balanced_tree = tree_view;
+    try {
+        balanced_tree = tree.algo11(tree_view);
 
-     auto balanced_tree = tree.algo11(tree_view);
+    } catch (IpplException& e) {
+        std::cout << "IpplException: " << e.what() << std::endl;
+        throw e;
+    } catch (std::exception& e) {
+        std::cout << "Exception: " << e.what() << std::endl;
+        throw e;
+    }
 
      Kokkos::View<morton_code*> expected("expected", 19);
      for (size_t i = 0; i < 7; ++i) {
