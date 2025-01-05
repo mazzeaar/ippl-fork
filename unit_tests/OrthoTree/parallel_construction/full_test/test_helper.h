@@ -108,7 +108,7 @@ std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
     tree.setLogOutput(false);
 
     Kokkos::View<ippl::morton_code*> parallel_tree   = tree.build_tree(particles);
-    Kokkos::View<ippl::morton_code*> sequential_tree = tree.build_tree_naive(particles);
+    Kokkos::View<ippl::morton_code*> sequential_tree;
 
     // gather sizes from all ranks on rank 0
     parallel_tree = gatherTreeOnRootRank(parallel_tree);
@@ -116,6 +116,7 @@ std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
     const size_t world_rank = Comm->rank();
     std::ostringstream oss;
     if (world_rank == 0) {
+       sequential_tree = tree.build_tree_naive(particles);
         // check that the sizes match
         const size_t total_size    = parallel_tree.extent(0);
         const size_t expected_size = sequential_tree.extent(0);
@@ -207,8 +208,7 @@ void runTests() {
 
         std::vector<size_t> num_particles_v       = {500, 1000, 2000, 5000, 10000, 50000};
         std::vector<size_t> max_depth_v           = {3, 4, 6, 8};
-        std::vector<double> max_particles_ratio_v = {/*1. / 2,*/ 1. / 3, 1. / 4, 1. / 5, 1. / 10,
-                                                     1. / 20};
+        std::vector<size_t> max_particles_v = {20, 10, 5, 2, 1};
     } test_data;
 
     static constexpr size_t Dim2 = 2;
@@ -223,8 +223,8 @@ void runTests() {
             auto particles3D = generateParticles<Dim3>(num_particles, min_bounds, max_bounds, seed);
 
             for (size_t max_depth : test_data.max_depth_v) {
-                for (double max_particles_ratio : test_data.max_particles_ratio_v) {
-                    const size_t max_particles = num_particles * max_particles_ratio;
+                for (double max_particles_ratio : test_data.max_particles_v) {
+                    const size_t max_particles = max_particles_ratio;
 
                     runTest<Dim2>(min_bounds, max_bounds, max_particles, max_depth, seed,
                                   num_particles, particles2D);

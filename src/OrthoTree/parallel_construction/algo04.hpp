@@ -49,11 +49,15 @@ namespace ippl {
         Kokkos::View<size_t*> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
         Kokkos::View<morton_code*> octants = partition(G, weights);
 
+        morton_code min_step = morton_helper.get_step_size(max_depth_m);
+        morton_code max_parent = *(octants.data() + octants.size() - 1);
+
+        morton_code new_min_octant = morton_helper.get_deepest_first_descendant(octants[0]);
+        morton_code new_max_octant = morton_helper.get_deepest_last_descendant(max_parent) + min_step;
+
         IpplTimings::TimerRef innitfromoctants = IpplTimings::getTimer("innitfromoctants");
         IpplTimings::startTimer(innitfromoctants);
 
-        morton_code new_min_octant = octants[0];
-        morton_code new_max_octant = *(octants.data() + octants.size() - 1);
         this->aid_list_m.innitFromOctants(new_min_octant, new_max_octant);
         IpplTimings::stopTimer(innitfromoctants);
 

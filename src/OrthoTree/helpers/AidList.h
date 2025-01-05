@@ -2,6 +2,7 @@
 #define AID_LIST_GUARD
 
 #include <Kokkos_Vector.hpp>
+#include <span>
 
 #include "OrthoTree/helpers/BoundingBox.h"
 #include "OrthoTree/helpers/MortonHelper.h"
@@ -23,6 +24,8 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> octants;
         Kokkos::View<size_t*> particle_ids;
+
+        Kokkos::View<morton_code*> bucket_borders;
 
     public:
         AidList(size_t max_depth);
@@ -70,6 +73,15 @@ namespace ippl {
         size_t getUpperBoundIndexExclusive(morton_code octant) const;
 
         /**
+         * @brief returns a view of views storing a buffer for the octants that will be sent to each rank
+         * to request the number of particles in the given octants.
+         * @tparam Container Some container with: random_access iterators and functions '.data()' and
+         * '.size()'
+         */
+        template <typename Container>
+        void getNumParticlesSendBuff(const Container& octants, Kokkos::View<Kokkos::View<size_t*>*>& send_buffs, Kokkos::View<size_t*>& sizes);
+
+        /**
          * @brief Calculates the number of particles for each octant.
          * @warning This function assumes, that the AidList is on rank0, and that it is called from
          * all ranks simultaneously! It will freeze if the later is not fullfilled.
@@ -95,7 +107,8 @@ namespace ippl {
         /**
          * @brief Initialises the AidList with {morton_code, particle_id} pairs.
          * This funciton assumes that all particles have been gathered on the given rank, will throw
-         * if they are not.
+         * if they are not. The aid list will be on rank 0.
+         * @warning the aid list will not be sorted after this function call. This has to be called on rank 0.
          */
         void initialize_from_rank(
             size_t max_depth, const BoundingBox<Dim>& root_bounds,
@@ -127,6 +140,17 @@ namespace ippl {
          * Rank 0 keeps the complete AidList to itself.
          */
         void innitFromOctants(morton_code min_octant, morton_code max_octant);
+
+        /**
+         * @brief This function distributes the aid list to all ranks in n_p buckets.
+         *        It also broadcasts the boundaries of the buckets to all ranks.
+         */
+        void distribute_buckets();
+
+        /**
+         * @brief This function sorts the part of the aid list that is local to the rank. Using std::sort
+         */
+        void sort_local_aidlist();
     };
 
 }  // namespace ippl

@@ -43,6 +43,8 @@ namespace ippl {
 
                 operator const MPI_Win*() const noexcept { return &win_m; }
 
+                MPI_Win* get_window() noexcept { return &win_m; }
+
                 template <std::contiguous_iterator Iter>
                 bool create(const Communicator& comm, Iter first, Iter last);
 

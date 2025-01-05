@@ -41,7 +41,7 @@ run_tests() {
             local procs=$(get_processor_count "$test_name")  # Resolve processor count dynamically
 
             echo "Running test '$test_name' with $procs processors."
-            mpiexec -n "$procs" "$test_executable"
+            mpiexec -n "$procs" --use-hwthread-cpus "$test_executable"
 
             if [[ $? -ne 0 ]]; then
                 echo "Test $test_executable failed."
