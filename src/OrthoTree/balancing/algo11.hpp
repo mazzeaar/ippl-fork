@@ -335,8 +335,8 @@ namespace ippl {
                     return std::any_of(i_layer.data(), i_layer.data() + i_layer.size(),
                                        [&](const morton_code i_oct) {
                                            return (i_oct == search_code)
-                                                  || morton_helper.is_descendant(i_oct,
-                                                                                 search_code);
+                                                  || morton_helper.is_descendant(search_code,
+                                                                                 i_oct);
                                        });
                 };
 
@@ -848,13 +848,13 @@ namespace ippl {
         logger << level1 << "Got to K_view initialization, some stuff left todo" << endl;
 
         // TODO: send the data generated in the loop above
-        Kokkos::View<morton_code*> K_view = init_K_view(
-            morton_helper, T_view, G_view, overlapping_octants, overlap_offsets, recv_sizes);
-
+        // Kokkos::View<morton_code*> K_view = init_K_view(morton_helper, T_view, G_view,
+        // overlapping_octants, overlap_offsets, recv_sizes);
+        Kokkos::View<morton_code*> K_view;
         // TODO receive octants into K_view
         PRINT_VIEW(K_view);
 
-        auto H_view = algo9(concatenateViews(G_view, T_view, K_view));
+        auto H_view = algo9(concatenateViews(G_view, T_view /*, K_view*/));
         LOG << "H_view ok" << endl;
         PRINT_VIEW(H_view);
         // std::sort(R_view.data(), R_view.data() + R_view.size());
