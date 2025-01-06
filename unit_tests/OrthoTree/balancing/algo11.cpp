@@ -133,6 +133,7 @@ TEST(BalancingTest, TestTest) {
     real_coordinate_template<Dim>{1, 1})); Morton<Dim> morton(max_depth);
 
      morton_code root = 0;
+     /*
      Kokkos::View<morton_code*> tree_view("tree_view", 3);
 
      if(Comm->rank() == 0){
@@ -157,11 +158,21 @@ TEST(BalancingTest, TestTest) {
         tree_view(1) = morton.encode({4, 4}, 1);
 
      }
+     */
+     Kokkos::View<morton_code*> tree_view("tree_view", 10);
+    
+    tree_view(0) = morton.encode({0, 0}, 2);
+    tree_view(1) = morton.encode({2, 0}, 2);
+    tree_view(2) = morton.encode({0, 2}, 2);
+    tree_view(3) = morton.encode({2, 2}, 3);
+    tree_view(4) = morton.encode({2, 3}, 3);
+    tree_view(5) = morton.encode({3, 2}, 3);
+    tree_view(6) = morton.encode({3, 3}, 3);
+    tree_view(7) = morton.encode({4, 0}, 1);
+    tree_view(8) = morton.encode({0, 4}, 1);
+    tree_view(9) = morton.encode({4, 4}, 1);
 
      std::sort(tree_view.data(), tree_view.data() + tree_view.size());
-     for (int i = 0; i < tree_view.size(); ++i) {
-         std::cerr << "tree_view(" << i << "): " << tree_view(i) << std::endl;
-     }
      auto balanced_tree = tree_view;
     try {
         balanced_tree = tree.algo11(tree_view);
@@ -201,14 +212,13 @@ TEST(BalancingTest, TestTest) {
         std::cerr << output << std::endl;
      }
      */
-     /*
      EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
      for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
          EXPECT_EQ(balanced_tree(i), expected(i))
            << "expected=" << morton.decode(expected(i))
            << ", actual=" << morton.decode(balanced_tree(i));
      }
-     */
+     /*
     if(Comm->rank() == 0){
         EXPECT_EQ(3, balanced_tree.size()) << "Sizes dont match!";
         EXPECT_EQ(2, balanced_tree(0)) << "expected = " << 2 << ", actual = " << balanced_tree(0);
@@ -237,6 +247,7 @@ TEST(BalancingTest, TestTest) {
         EXPECT_EQ(226, balanced_tree(6)) << "expected = " << 226 << ", actual = " << balanced_tree(6);
         EXPECT_EQ(242, balanced_tree(7)) << "expected = " << 242 << ", actual = " << balanced_tree(7);
     }
+    */
 }
 
 int main(int argc, char** argv) {
