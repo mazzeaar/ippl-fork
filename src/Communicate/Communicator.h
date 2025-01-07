@@ -114,6 +114,10 @@ namespace ippl {
             void alltoallv(const T* input, const int* send_counts, const int* send_displacements,
                            T* output, const int* recv_counts, const int* recv_displacements);
 
+            template <typename T>
+            void gatherv(const T* input, T* output, int send_count, const int* recv_counts,
+                         const int* displacements, int root);
+
             /* Scatter the data from all other nodes to a
              * specific node (default: 0).
              */

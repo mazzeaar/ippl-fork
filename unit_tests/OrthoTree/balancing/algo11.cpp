@@ -166,8 +166,8 @@ TEST(BalancingTest, TestTest) {
     tree_view(1) = morton.encode({2, 0}, 2);
     tree_view(2) = morton.encode({0, 2}, 2);
     tree_view(3) = morton.encode({2, 2}, 3);
-    tree_view(4) = morton.encode({2, 3}, 3);
-    tree_view(5) = morton.encode({3, 2}, 3);
+    tree_view(4) = morton.encode({3, 2}, 3);
+    tree_view(5) = morton.encode({2, 3}, 3);
     tree_view(6) = morton.encode({3, 3}, 3);
     tree_view(7) = morton.encode({4, 0}, 1);
     tree_view(8) = morton.encode({0, 4}, 1);

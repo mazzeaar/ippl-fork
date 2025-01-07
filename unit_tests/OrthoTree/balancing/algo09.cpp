@@ -75,8 +75,8 @@ TEST(RipplePropagation, TestTest) {
     tree_view(1) = morton.encode({2, 0}, 2);
     tree_view(2) = morton.encode({0, 2}, 2);
     tree_view(3) = morton.encode({2, 2}, 3);
-    tree_view(4) = morton.encode({2, 3}, 3);
-    tree_view(5) = morton.encode({3, 2}, 3);
+    tree_view(4) = morton.encode({3, 2}, 3);
+    tree_view(5) = morton.encode({2, 3}, 3);
     tree_view(6) = morton.encode({3, 3}, 3);
     tree_view(7) = morton.encode({4, 0}, 1);
     tree_view(8) = morton.encode({0, 4}, 1);
@@ -107,7 +107,7 @@ TEST(RipplePropagation, TestTest) {
     
     EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
     for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
-        EXPECT_EQ(balanced_tree(i), expected(i))
+        ASSERT_EQ(balanced_tree(i), expected(i))
           << "expected=" << morton.decode(expected(i)) 
           << ", actual=" << morton.decode(balanced_tree(i));
     }

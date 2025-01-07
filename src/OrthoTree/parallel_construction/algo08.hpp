@@ -9,9 +9,13 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::linearise_octants(
         const Kokkos::View<morton_code*>& octants) {
+        // TODO
         //assert(octants.size() > 0
         //       && "Octants.size() is zero, dont call this function with an empty list!");
         if(octants.size() == 0) return octants;
+
+        IpplTimings::TimerRef lineariseOctantsTimer = IpplTimings::getTimer("linearise_octants");
+        IpplTimings::startTimer(lineariseOctantsTimer);
 
         Kokkos::View<morton_code*> linearised("linearised", octants.size());
 
@@ -26,8 +30,10 @@ namespace ippl {
         }
 
         linearised[j] = octants[octants.size() - 1];
-        Kokkos::resize(linearised, j+1);
+        Kokkos::resize(linearised, j + 1);
 
+        IpplTimings::stopTimer(lineariseOctantsTimer);
+        
         return linearised;
     }
 }  // namespace ippl

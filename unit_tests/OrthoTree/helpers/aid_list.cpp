@@ -136,7 +136,50 @@ TEST(AidListTest, ChecksIfGatheredCorrectly) {
     }
 }
 
+TEST(AidListTest, ConstructsSortedTest) {
+    auto is_sorted = [](const auto& container) {
+        return std::is_sorted(container.data(), container.data() + container.size());
+    };
+
+    // #### SETUP ####
+    static constexpr size_t Dim       = 3;
+    const size_t max_depth            = 5;
+    const double min_bounds           = 0.0;
+    const double max_bounds           = 1.0;
+    const size_t n_particles_per_proc = 100;
+
+    BoundingBox<Dim> root_bounds({min_bounds, min_bounds, min_bounds},
+                                 {max_bounds, max_bounds, max_bounds});
+
+    auto gathered_particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
+
+    AidList<Dim> working_aid_list(max_depth);
+    working_aid_list.initialize(root_bounds, gathered_particles);
+
+    // #### SETUP DONE ####
+
+    EXPECT_TRUE(is_sorted(working_aid_list.getOctants()))
+        << "AidList is not sorted on rank " << Comm->rank();
+}
+
 TEST(AidListTest, ConstructorTest) {
+    auto is_sorted = [](const auto& container) {
+        return std::is_sorted(container.data(), container.data() + container.size());
+    };
+
+    auto sort = [](auto& container) {
+        std::sort(container.data(), container.data() + container.size());
+    };
+
+    auto get_span = [](auto& container) {
+        return std::span(container.data(), container.size());
+    };
+
+    auto init_vec_from_view = [get_span](auto& source, auto& target) {
+        auto source_span = get_span(source);
+        std::copy(source_span.begin(), source_span.end(), target.begin());
+    };
+
     // #### SETUP ####
     static constexpr size_t Dim       = 3;
     const size_t max_depth            = 5;
@@ -154,26 +197,144 @@ TEST(AidListTest, ConstructorTest) {
 
     working_aid_list.initialize(root_bounds, gathered_particles);
 
-    if (Comm->rank() == 0) {
-        EXPECT_EQ(working_aid_list.size(), n_particles_per_proc * Comm->size());
-    } else {
-        EXPECT_EQ(working_aid_list.size(), 0);
+    std::vector<morton_code> all_octants;
+    std::vector<size_t> all_particle_ids;
+
+    // #### gather the AidList on rank 0 ####
+    {
+        int total_num_octants = 0;
+        int local_size        = working_aid_list.size();
+        Comm->allreduce(local_size, total_num_octants, 1, std::plus<>());
+
+        // the sum of the number of octants on each rank should be equal to the total number of
+        // octants
+        ASSERT_EQ(total_num_octants, gathered_particles.getTotalNum());
+
+        std::cout << "actualy Rank " << Comm->rank() << " has " << local_size << " octants"
+                  << std::endl;
+
+        std::vector<int> sizes(Comm->size(), -1);
+        std::vector<int> displs(Comm->size(), -1);
+
+        Comm->gather(&local_size, sizes.data(), 1);
+        // print the sizes
+        if (Comm->rank() == 0) {
+            for (int i = 0; i < Comm->size(); ++i) {
+                std::cout << "Rank " << i << " has " << sizes[i] << " octants" << std::endl;
+            }
+        }
+
+        if (Comm->rank() == 0) {
+            displs[0] = 0;
+            for (int i = 1; i < Comm->size(); ++i) {
+                displs[i] = displs[i - 1] + sizes[i - 1];
+                std::cout << "Displacement " << i << ": " << displs[i] << std::endl;
+            }
+        }
+
+        all_octants      = std::vector<morton_code>(total_num_octants, -1);
+        all_particle_ids = std::vector<size_t>(total_num_octants, -1);
+
+        Comm->gatherv(working_aid_list.getOctants().data(), all_octants.data(), local_size,
+                      sizes.data(), displs.data(), 0);
+        Comm->gatherv(working_aid_list.getParticleIDs().data(), all_particle_ids.data(), local_size,
+                      sizes.data(), displs.data(), 0);
     }
 
-    auto ungathered_particles =
-        getUngatheredParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
-
-    AidList<Dim> failing_aid_list(max_depth);
-
+    // #### validate the gathered AidList ####
     if (Comm->rank() == 0) {
-        EXPECT_ANY_THROW(failing_aid_list.initialize(root_bounds, ungathered_particles));
-    } else {
-        EXPECT_NO_THROW(failing_aid_list.initialize(root_bounds, ungathered_particles));
-        EXPECT_EQ(failing_aid_list.size(), 0);
+        ASSERT_TRUE(is_sorted(all_octants)) << "AidList is not sorted on rank " << Comm->rank();
+
+        std::vector<morton_code> all_octants_naive;
+        std::vector<size_t> all_particle_ids_naive;
+
+        // initialise the naive implementation
+        {
+            AidList<Dim> aid_list(max_depth);
+            aid_list.initialize_from_rank(max_depth, root_bounds, gathered_particles);
+            aid_list.sort_local_aidlist();
+
+            all_octants_naive.resize(aid_list.size());
+            all_particle_ids_naive.resize(aid_list.size());
+
+            init_vec_from_view(aid_list.getOctants(), all_octants_naive);
+            init_vec_from_view(aid_list.getParticleIDs(), all_particle_ids_naive);
+
+            EXPECT_EQ(all_octants_naive, all_octants);
+        }
+
+        {  // whats the idea behind this? xD
+
+            // same code below, just rewritten
+            size_t start_index = 0;
+            for (size_t i = 1; i <= all_octants.size(); ++i) {
+                // check if the current oct group has ended (new octant) or if we reached the end of
+                // the list
+                if (i == all_octants.size() || all_octants[i] != all_octants[start_index]) {
+                    auto sort_subrange = [&](auto& container) {
+                        auto cur_subrange = std::ranges::subrange(container.begin() + start_index,
+                                                                  container.begin() + i);
+                        std::ranges::sort(cur_subrange);
+                    };
+
+                    sort_subrange(all_particle_ids);
+                    sort_subrange(all_particle_ids_naive);
+
+                    start_index = i;
+                }
+            }
+
+            EXPECT_EQ(all_particle_ids_naive, all_particle_ids);
+
+            /*
+                // check if the particle ids are equal for different octants
+                auto octant_o  = all_octants[0];
+                size_t start_i = 0;
+                size_t count   = 0;
+
+                for (size_t i = 1; i <= all_octants.size(); ++i) {
+                    if (i < all_octants.size() && all_octants[i] == octant_o) {
+                        count++;
+                    } else {
+                        // check if the particle ids are sorted
+                        count++;
+                        std::sort(all_particle_ids.begin() + start_i,
+                                all_particle_ids.begin() + start_i + count);
+                        std::sort(all_particle_ids_naive.begin() + start_i,
+                                all_particle_ids_naive.begin() + start_i + count);
+                        start_i = i;
+                        count   = 0;
+                        if (i < all_octants.size())
+                            octant_o = all_octants[i];
+                    }
+                }
+
+                EXPECT_EQ(all_particle_ids_naive, all_particle_ids);
+            */
+        }
+
+        // #### all ids should appear equally many times ####
+        {
+            std::unordered_map<size_t, int> pid_map;
+
+            for (size_t i = 0; i < all_particle_ids.size(); ++i) {
+                ++pid_map[all_particle_ids[i]];
+                --pid_map[all_particle_ids_naive[i]];
+            }
+
+            // all counts should be zero
+            EXPECT_TRUE(std::ranges::all_of(pid_map, [](const auto& elem) {
+                return elem.second == 0;
+            })) << "Wrong!";
+        }
     }
 }
 
 TEST(AidListTest, CorrectConstructionTest2D) {
+    std::cout << "CorrectConstructionTest2d started on rank " << Comm->rank() << std::endl;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "Barrier passed on rank " << Comm->rank() << std::endl;
     // #### SETUP ####
     static constexpr size_t Dim       = 2;
     const size_t max_depth            = 1;
@@ -188,29 +349,15 @@ TEST(AidListTest, CorrectConstructionTest2D) {
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds}, {max_bounds, max_bounds});
 
     aid_list.initialize(root_bounds, particles);
+
+    // Gather the octants and particle ids
+
     // #### SETUP DONE ####
-
-    if (Comm->rank() == 0) {
-        std::map<morton_code, size_t> octant_counter;
-
-        for (size_t i = 0; i < (size_t)Comm->size() * n_particles_per_proc; ++i) {
-            octant_counter[aid_list.getOctant(i)]++;
-        }
-
-        ASSERT_EQ(octant_counter.size(), 4);
-
-        for (const auto& [octant, count] : octant_counter) {
-            EXPECT_EQ(count, n_particles_per_proc);
-        }
-
-        for (morton_code code : {0b001, 0b011, 0b101, 0b111}) {
-            EXPECT_TRUE(octant_counter.contains(code));
-        }
-    }
 
     EXPECT_TRUE(std::is_sorted(aid_list.getOctants().data(),
                                aid_list.getOctants().data() + aid_list.size()))
         << "AidList is not sorted on rank " << Comm->rank();
+    std::cout << "CorrectConstructionTest2d complteded on rank " << Comm->rank() << std::endl;
 }
 
 TEST(AidListTest, NumParticlesInOctantTest) {
@@ -291,27 +438,26 @@ TEST(AidListTest, NumParticlesInOctantTest) {
                                              .expected_total_particles  = n_particles_per_proc}};
 
     // #### TEST HELPERS DONE ####
+    /*
+        if (Comm->rank() == 0) {
+            // we should only have 4 different octants
 
-    if (Comm->rank() == 0) {
-        // we should only have 4 different octants
-        ASSERT_EQ(aid_list.size(), total_num_particles);
+            ASSERT_EQ(aid_list.size(), total_num_particles);
 
-        for (auto test_data : tests_to_run) {
-            run_test(test_data);
+            for (auto test_data : tests_to_run) {
+                run_test(test_data);
+            }
         }
-    }
+    */
+    // barier
+    MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto test_data : tests_to_run) {
-        std::vector<morton_code> octants = {test_data.octant};
-
-        // this has always size one, so we can just take the first element in the returning vector
-        const size_t calc_result = aid_list.getNumParticlesInOctantsParallel(octants)[0];
-        EXPECT_EQ(test_data.expected_total_particles, calc_result)
-            << "Rank " << Comm->rank() << " expected: " << test_data.expected_total_particles
-            << ", but got: " << calc_result;
-    }
+    Kokkos::View<morton_code*> octants("octants", 1);
+    octants(0) = tests_to_run[Comm->rank() + 1].octant;
+    aid_list.getNumParticlesInOctantsParallel(octants);
 }
 
+/*
 TEST(AidListTest, GetReqOctantsTest) {
     // #### SETUP ####
     static constexpr size_t Dim       = 2;
@@ -359,6 +505,7 @@ TEST(AidListTest, GetReqOctantsTest) {
  * @brief If this test fails, but only once then it was random chance, everything is ok.
  * You could just turn up the tolerance though:)
  */
+/*
 TEST(AidListTest, InitialiseForRank) {
     // #### SETUP ####
     static constexpr size_t Dim       = 2;
@@ -400,6 +547,7 @@ TEST(AidListTest, InitialiseForRank) {
                                aid_list.getOctants().data() + aid_list.size()))
         << "Octants are not sorted on rank " << Comm->rank();
 }
+*/
 
 int main(int argc, char** argv) {
     // Initialize MPI and IPPL

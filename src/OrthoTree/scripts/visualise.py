@@ -318,7 +318,7 @@ max_particles_per_octant=None
 """
 This will generate one plot, where each processor will be colored differently. (not that usefull)
 """
-plot_combined_processors(data_folder=data_folder, show_stats=show_stats, title=title, max_depth=max_depth, max_particles_per_octant=max_particles_per_octant, should_plot_particles=False)
+plot_combined_processors(data_folder=data_folder, show_stats=show_stats, title=title, max_depth=max_depth, max_particles_per_octant=max_particles_per_octant, should_plot_particles=True)
 
 """
 This generates one plot per processor.
