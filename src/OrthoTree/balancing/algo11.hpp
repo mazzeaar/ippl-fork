@@ -432,6 +432,7 @@ namespace ippl {
     // INPUT HAS TO BE SORTED
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
+        std::cout << "starting algo11\n";
         Kokkos::View<morton_code*> B_view = L_view;  // algo4_11(L_view);
 
         // this has to be sequential, else we have to sort C_view at the end
@@ -473,6 +474,7 @@ namespace ippl {
         auto F_view = linearise_octants(concatenated_S_C);
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
 
+        std::cout << "Starting with T_view\n";
         // T_view
         auto [overlapping_octants, overlap_offsets] =
             inter_proc_boundaries(morton_helper, G_view, B_view);
@@ -571,6 +573,7 @@ namespace ippl {
         /**
          * Each rank should now have all the octants it needs
          */
+        std::cout << "Starting with K_view\n";
 
         // K_view
         auto [K_overlapping_octants, K_overlap_offsets] =
@@ -670,9 +673,12 @@ namespace ippl {
 
         auto conc_G_T_K = concatenateViews(G_view, concatenateViews(T_view , K_view));
 
+        std::cout << "Starting algo8\n";
         auto H_view = algo9(conc_G_T_K);
+        std::cout << "Initializing R_view\n";
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         R_view = linearise_octants(R_view);
+        std::cout << "Done\n";
         assert(is_balanced(R_view));
         return R_view;
     }
