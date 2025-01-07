@@ -100,14 +100,13 @@ Kokkos::View<ippl::morton_code*> gatherTreeOnRootRank(Kokkos::View<ippl::morton_
 }
 
 template <size_t Dim>
-std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
-                           const auto& particles) {
+std::string executeTestRun(OrthoTree<Dim>& tree, const auto& particles) {
     // disable annoying logs, we dont need them in tests
     tree.setVisualisation(false);
     tree.setPrintStats(false);
     tree.setLogOutput(false);
 
-    Kokkos::View<ippl::morton_code*> parallel_tree   = tree.build_tree(particles);
+    Kokkos::View<ippl::morton_code*> parallel_tree = tree.build_tree(particles);
     Kokkos::View<ippl::morton_code*> sequential_tree;
 
     // gather sizes from all ranks on rank 0
@@ -116,7 +115,7 @@ std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
     const size_t world_rank = Comm->rank();
     std::ostringstream oss;
     if (world_rank == 0) {
-       sequential_tree = tree.build_tree_naive(particles);
+        sequential_tree = tree.build_tree_naive(particles);
         // check that the sizes match
         const size_t total_size    = parallel_tree.extent(0);
         const size_t expected_size = sequential_tree.extent(0);
@@ -155,7 +154,7 @@ void runTest(double min_bounds, double max_bounds, size_t max_particles, size_t 
         BoundingBox<Dim> root_bounds({min_bounds, min_bounds}, {max_bounds, max_bounds});
         OrthoTree<Dim> tree(max_depth, max_particles, root_bounds);
 
-        std::string result = executeTestRun<Dim>(root_bounds, tree, particles);
+        std::string result = executeTestRun<Dim>(tree, particles);
 
         if (Comm->rank() == 0) {
             if (!result.empty()) {
@@ -206,8 +205,8 @@ void runTests() {
         std::vector<double> min_bounds_v = {-1.0, 0.0};
         double max_bounds                = 1.0;
 
-        std::vector<size_t> num_particles_v       = {500, 1000, 2000, 5000, 10000, 50000};
-        std::vector<size_t> max_depth_v           = {3, 4, 6, 8};
+        std::vector<size_t> num_particles_v = {500, 1000, 2000, 5000, 10000, 50000};
+        std::vector<size_t> max_depth_v     = {3, 4, 6, 8};
         std::vector<size_t> max_particles_v = {20, 10, 5, 2, 1};
     } test_data;
 

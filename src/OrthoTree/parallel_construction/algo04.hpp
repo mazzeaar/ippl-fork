@@ -11,6 +11,7 @@ namespace ippl {
         IpplTimings::TimerRef blockPartitionTimer = IpplTimings::getTimer("block_partition");
         IpplTimings::startTimer(blockPartitionTimer);
 
+        auto local_morton_helper = morton_helper;
         Kokkos::View<morton_code*> T = complete_region(min_octant, max_octant);
 
         // find the lowest level (smallest depth)
@@ -18,7 +19,7 @@ namespace ippl {
         Kokkos::parallel_reduce("algo4::FindLowestLevel",
             T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& min_depth) {
-                size_t depth = morton_helper.get_depth(T(i));
+                size_t depth = local_morton_helper.get_depth(T(i));
                 if (depth < min_depth) {
                     min_depth = depth;
                 }
@@ -30,7 +31,7 @@ namespace ippl {
         Kokkos::parallel_reduce("algo4::CountAtLowestLevel",
             T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& count) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     count++;
                 }
             },
@@ -41,7 +42,7 @@ namespace ippl {
         // populate C_view
         Kokkos::parallel_scan("algo4::PopulateC",
             T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     if (final) {
                         C(index) = T(i);
                     }
