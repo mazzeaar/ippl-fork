@@ -161,6 +161,14 @@ namespace ippl {
                                              Kokkos::View<size_t*> weights);
 
         /**
+         * ALGO 5
+         *
+         * @brief Wrapper for partition for when it is called without weights, will call partition
+         * with all weights set to 1
+         */
+        Kokkos::View<morton_code*> partition(Kokkos::View<morton_code*> octants);
+
+        /**
          * ALGO 8
          *
          * @brief Linearises octants by removing ancestors that would cause overlaps

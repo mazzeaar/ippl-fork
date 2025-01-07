@@ -14,120 +14,139 @@ namespace ippl {
 */
 
 namespace ippl {
-    template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*> arg_octants) {
+    Kokkos::View<morton_code*> remove_duplicates(Kokkos::View<morton_code*> input_view) {
+        const size_t input_size = input_view.extent(0);
 
+        size_t unique_count = 0;
+        Kokkos::parallel_reduce(
+            "algo3::CountUniqueElements", input_size - 1,
+            KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
+                local_count += static_cast<size_t>(input_view(i) != input_view(i + 1));
+            },
+            unique_count);
+
+        const size_t output_size = unique_count + 1;
+        Kokkos::View<morton_code*> output_view("algo3::deduplicated_view", output_size);
+
+        /*
+        Kokkos::View<size_t> index("algo3::index");
+        Kokkos::deep_copy(index, size_t(0));
+        Kokkos::parallel_for(
+            "algo3::PopulateUniqueElements", input_size - 1, KOKKOS_LAMBDA(const size_t i) {
+                if (input_view(i) != input_view(i + 1)) {
+                    const size_t current_index = Kokkos::atomic_fetch_add(&index(), size_t(1));
+                    output_view(current_index) = input_view(i);
+                }
+            });
+        */
+
+        Kokkos::parallel_scan(
+                "algo3::PopulateUniqueElements", input_size - 1, 
+                KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
+                    if (input_view(i) != input_view(i+1)) {
+                        if (final) {
+                            output_view(index) = input_view(i);
+                        }
+                        ++index;
+                    }
+                });
+
+        Kokkos::parallel_for(
+            "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
+                output_view(output_size - 1) = input_view(input_view.extent(0) - 1);
+            });
+
+        return output_view;
+    }
+
+    template <size_t Dim>
+    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(
+        Kokkos::View<morton_code*> input_octants) {
         IpplTimings::TimerRef completeTreeTimer = IpplTimings::getTimer("complete_tree");
         IpplTimings::startTimer(completeTreeTimer);
 
-        // this removes duplicates, inefficient as of now
-        Kokkos::View<morton_code*> octants = arg_octants;
+        auto deduplicated_octants = remove_duplicates(input_octants);
+        auto linearised_octants   = linearise_octants(deduplicated_octants);
 
-        std::map<morton_code, int> m;
-        for (auto octant : std::span(octants.data(), octants.size())) {
-            ++m[octant];
-        }
+        auto partitioned_octants      = partition(linearised_octants);
+        const size_t partitioned_size = partitioned_octants.extent(0);
 
-        Kokkos::resize(octants, m.size());  // shrink
-        size_t octants_idx = 0;
-        for (const auto [octant, count] : m) {
-            octants[octants_idx] = octant;
-            octants_idx++;
-        }
-
-        octants = linearise_octants(octants);
-
-        Kokkos::View<size_t*> weights_view("weights_view", octants.size());
-        for (size_t i = 0; i < octants.size(); ++i) {
-            weights_view[i] = 1;
-        }
-
-        octants = partition(octants, weights_view);
-
-        morton_code first_rank0;
+        morton_code push_front_buff = 0;
+        morton_code push_back_buff  = 0; 
         if (world_rank == 0) {
             const morton_code dfd_root = morton_helper.get_deepest_first_descendant(morton_code(0));
             const morton_code A_finest =
-                morton_helper.get_nearest_common_ancestor(dfd_root, octants[0]);
+                morton_helper.get_nearest_common_ancestor(dfd_root, partitioned_octants(0));
 
-            first_rank0 = morton_helper.get_first_child(A_finest);
+            push_front_buff = morton_helper.get_first_child(A_finest);
         }
         if (world_rank == world_size - 1) {
             const morton_code dld_root = morton_helper.get_deepest_last_descendant(morton_code(0));
-            const morton_code A_finest =
-                morton_helper.get_nearest_common_ancestor(dld_root, octants[octants.size() - 2]);
+            const morton_code A_finest = morton_helper.get_nearest_common_ancestor(
+                dld_root, partitioned_octants(partitioned_size - 1));
             const morton_code last_child = morton_helper.get_last_child(A_finest);
 
-            Kokkos::resize(octants, octants.size() + 1);
-            octants[octants.size() - 1] = last_child;
+            push_back_buff = last_child;
         }
 
         if (world_rank > 0) {
-            Comm->send(*octants.data(), 1, world_rank - 1, 0);
+            Comm->send(*partitioned_octants.data(), 1, world_rank - 1, 0);
         }
 
-        morton_code buff = 0;
         if (world_rank < world_size - 1) {
             mpi::Status status;
-            Comm->recv(&buff, 1, world_rank + 1, 0, status);
-            // do we need a status check here or not?
-            if(buff != 0){
-                Kokkos::resize(octants, octants.size() + 1);
-                octants[octants.size() - 1] = buff;
-            }
+            Comm->recv(&push_back_buff, 1, world_rank + 1, 0, status);
         }
 
-        size_t R_base_size = 100;
-        size_t R_index = 0;
-        Kokkos::View<morton_code*> R_view("R_view", R_base_size);
+        const size_t R_base_size = 100;
+        Kokkos::View<morton_code*> R_view("algo3::R_view", R_base_size);
 
-        auto insert_into_R = [&](morton_code octant_a, morton_code octant_b) {
-            auto complete_region_view       = complete_region(octant_a, octant_b);
-            const size_t additional_octants = complete_region_view.size() + 1;
-            size_t remaining_space = R_view.size() - R_index;
+        size_t R_index     = 0;
+        auto insert_into_R = KOKKOS_LAMBDA(Kokkos::View<morton_code*> R_view, size_t R_index,
+                                           morton_code octant_a, morton_code octant_b)
+                                 ->size_t {
+            const auto complete_region        = this->complete_region(octant_a, octant_b);
+            const size_t complete_region_size = complete_region.extent(0);
+            const size_t additional_octants   = complete_region_size + 1;
+            const size_t remaining_space      = R_view.extent(0) - R_index;
 
-            while (remaining_space <= additional_octants) {
-                Kokkos::resize(R_view, R_view.size() + R_base_size);
-                remaining_space = R_view.size() - R_index;
+            if (remaining_space <= additional_octants) {
+                const size_t new_size =
+                    R_view.extent(0) + (additional_octants - remaining_space) + R_base_size;
+                Kokkos::resize(R_view, new_size);
             }
 
-            R_view[R_index] = octant_a;
-            R_index++;
-
-            for (morton_code elem :
-            std::span(complete_region_view.data(), complete_region_view.size())) {
-                R_view[R_index] = elem;
-                R_index++;
+            R_view(R_index) = octant_a;
+            R_index += 1;
+            //cuda compilation failed using the parallel for - replaced with for loop
+            //TODO (optional): look at complete region and see if hierarchical parallelism can be used
+            //Kokkos::parallel_for(
+            //    complete_region_size,
+            //    KOKKOS_LAMBDA(const size_t i) { R_view(R_index + i) = complete_region(i); });
+            for (size_t i = 0; i < complete_region_size; ++i) {
+                R_view(R_index + i) = complete_region(i);
             }
-            };
+
+
+            return complete_region_size + 1;
+        };
 
         if (world_rank == 0) {
-            // special case for rank 0, as we push_front'ed earlier
-            insert_into_R(first_rank0, octants[0]);
+            R_index += insert_into_R(R_view, R_index, push_front_buff, partitioned_octants(0));
         }
 
-        for (size_t i = 0; i < octants.size() - 1; ++i) {
-            insert_into_R(octants[i], octants[i + 1]);
+        for (size_t i = 0; i < partitioned_size - 1; ++i) {
+            R_index +=
+                insert_into_R(R_view, R_index, partitioned_octants(i), partitioned_octants(i + 1));
         }
+
+        R_index += insert_into_R(R_view, R_index, partitioned_octants(partitioned_size - 1),
+                                 push_back_buff);
 
         if (world_rank == world_size - 1) {
-            const size_t R_size = R_view.size();
-            // we can either be smaller or have a perfect fit, larger (should) not be possible
-            if (R_index + 1 < R_size) {
-                // shrink
-                Kokkos::resize(R_view, R_index + 1);
-            }
-            else if (R_index + 1 > R_size) {
-                // this is not possible
-                assert(false && "how the fuck did we get here?");
-            }
-
-            // insert to the back
-            R_view[R_index] = octants[octants.size() - 1];
-            R_index++;
-
-        }
-        else {
+            Kokkos::resize(R_view, R_index + 1);
+            R_view(R_index) = push_back_buff;
+        } else {
             Kokkos::resize(R_view, R_index);
         }
 

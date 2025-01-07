@@ -15,7 +15,7 @@ namespace ippl {
         IpplTimings::startTimer(completeRegionTimer);
        
         if (code_a >= code_b) {
-            Kokkos::View<morton_code*> min_lin_tree_empty("empty min_lin_tree", 0);
+            Kokkos::View<morton_code*> min_lin_tree_empty("algo2::complete_region::empty min_lin_tree", 0);
             return min_lin_tree_empty;
         }
         assert(code_a < code_b);
@@ -25,12 +25,12 @@ namespace ippl {
         // -> the bigger code is already the region, don't need to complete anything
         if (morton_helper.is_ancestor(code_a, code_b)
             || morton_helper.is_ancestor(code_b, code_a)) {
-            Kokkos::View<morton_code*> min_lin_tree_empty("empty min_lin_tree", 0);
+            Kokkos::View<morton_code*> min_lin_tree_empty("algo2::complete_region::empty min_lin_tree", 0);
             return min_lin_tree_empty;
         }
 
         size_t estimated_size = 79;  // should never have to resize with this
-        Kokkos::View<morton_code*> min_lin_tree("min_lin_tree", estimated_size);
+        Kokkos::View<morton_code*> min_lin_tree("algo2::complete_region::min_lin_tree", estimated_size);
         size_t idx = 0;
 
         const morton_code nearest_comm_ancestor =

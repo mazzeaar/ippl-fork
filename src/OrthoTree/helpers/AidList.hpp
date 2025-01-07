@@ -1,8 +1,9 @@
-#include "AidList.h"
 #include <mpi.h>
 
+#include "AidList.h"
 #include "Communicate/Window.h"
-
+#include "Kokkos_Sort.hpp"
+#include "Kokkos_UnorderedMap.hpp"
 
 namespace ippl {
     template <size_t Dim>
@@ -22,36 +23,35 @@ namespace ippl {
     template <size_t Dim>
     template <typename PLayout>
     void AidList<Dim>::initialize(const BoundingBox<Dim>& root_bounds, PLayout const& particles) {
-        logger<<"Initializing AidList"<<endl;
+        logger << "Initializing AidList" << endl;
         if (world_rank == 0) {
             initialize_from_rank(max_depth, root_bounds, particles);
             logger << "initial Aid list is initialized with size: " << octants.size() << endl;
             distribute_buckets();
-        }
-        else{
+        } else {
             mpi::Status stat;
-            //receive the bucket borders
+            // receive the bucket borders
 
             Comm->broadcast(bucket_borders.data(), bucket_borders.size(), 0);
 
-            //receive the bucket size
+            // receive the bucket size
             size_t bucket_size;
             Comm->recv(&bucket_size, 1, 0, 1, stat);
 
-            IpplTimings::TimerRef bucket_distribution = IpplTimings::getTimer("Bucket Distribution Timer");
+            IpplTimings::TimerRef bucket_distribution =
+                IpplTimings::getTimer("Bucket Distribution Timer");
             IpplTimings::startTimer(bucket_distribution);
-            //allocate the space for the bucket in the aid list
-            octants = Kokkos::View<morton_code*>("octants", bucket_size);
-            particle_ids = Kokkos::View<size_t*>("particle_ids", bucket_size);
-            
-            //receive the octants and the particle ids
+            // allocate the space for the bucket in the aid list
+            octants      = Kokkos::View<morton_code*>("aid_list::octants", bucket_size);
+            particle_ids = Kokkos::View<size_t*>("aid_list::particle_ids", bucket_size);
+
+            // receive the octants and the particle ids
             logger << "Receiving octants and particle ids on rank " << world_rank << endl;
-            if(bucket_size > 0){
+            if (bucket_size > 0) {
                 Comm->recv(octants.data(), bucket_size, 0, 0, stat);
                 Comm->recv(particle_ids.data(), bucket_size, 0, 1, stat);
             }
             IpplTimings::stopTimer(bucket_distribution);
-
         }
         IpplTimings::TimerRef sort_aidlist = IpplTimings::getTimer("Sort AidList Timer");
         IpplTimings::startTimer(sort_aidlist);
@@ -67,15 +67,20 @@ namespace ippl {
         const size_t n_particles = octants.size();
 
         // vector storing the actual sizes of the buckets initially 0
-        Kokkos::View<size_t*> bucket_sizes("bucket_sizes", world_size);
+        Kokkos::View<size_t*> bucket_sizes("aid_list::distribute_buckets::bucket_sizes",
+                                           world_size);
         Kokkos::deep_copy(bucket_sizes, 0);
 
-        Kokkos::View<size_t*> buckets_particle_ids("buckets_particle_ids", n_particles);
-        Kokkos::View<morton_code*> buckets_octants("buckets_octants", n_particles);
-        Kokkos::View<size_t*> bucket_indices("bucket_indices", world_size);
+        Kokkos::View<size_t*> buckets_particle_ids(
+            "aid_list::distribute_buckets::buckets_particle_ids", n_particles);
+        Kokkos::View<morton_code*> buckets_octants("aid_list::distribute_buckets::buckets_octants",
+                                                   n_particles);
+        Kokkos::View<size_t*> bucket_indices("aid_list::distribute_buckets::bucket_indices",
+                                             world_size);
         Kokkos::deep_copy(bucket_indices, 0);
 
-        Kokkos::View<size_t*> sizes_prefix_sum("sizes_prefix_sum", world_size);
+        Kokkos::View<size_t*> sizes_prefix_sum("aid_list::distribute_buckets::sizes_prefix_sum",
+                                               world_size);
 
         // get the target rank for a given octant
         auto get_target_rank = [&](morton_code octant) {
@@ -96,7 +101,7 @@ namespace ippl {
             const size_t k               = max_octant % world_size;
 
             // distribute ranges of possible octants equally among the ranks
-            // the first k ranks get a range one larger than the rest 
+            // the first k ranks get a range one larger than the rest
             // !!! These might not be valid morton_codes but it doesn't matter since
             // they are only used to distribute the octants
             for (size_t i = 1; i < world_size; ++i) {
@@ -110,7 +115,8 @@ namespace ippl {
             Comm->broadcast(bucket_borders.data(), bucket_borders.size(), 0);
         }
 
-        IpplTimings::TimerRef bucket_distribution = IpplTimings::getTimer("Bucket Distribution Timer");
+        IpplTimings::TimerRef bucket_distribution =
+            IpplTimings::getTimer("Bucket Distribution Timer");
         IpplTimings::startTimer(bucket_distribution);
 
         /**
@@ -125,7 +131,8 @@ namespace ippl {
 
             size_t local_total = 0;
             Kokkos::parallel_scan(
-                "prefix_sum", world_size,
+                "aid_list::distribute_buckets::calculate bucket size for each rank::prefix_sum",
+                world_size,
                 KOKKOS_LAMBDA(const size_t i, size_t& sum, const bool final) {
                     sum += bucket_sizes(i);
                     if (final) {
@@ -204,6 +211,7 @@ namespace ippl {
         }
     }
 
+    
     template <size_t Dim>
     void AidList<Dim>::sort_local_aidlist() {
 
@@ -217,11 +225,11 @@ namespace ippl {
         });
 
         // allocate the space for the sorted aid list
-        Kokkos::View<morton_code*> sorted_octants("sorted_octants", octants.size());
-        Kokkos::View<size_t*> sorted_particle_ids("sorted_particle_ids", octants.size());
+        Kokkos::View<morton_code*> sorted_octants("aid_list::sort_local_aidlist::sorted_octants", octants.size());
+        Kokkos::View<size_t*> sorted_particle_ids("aid_list::sort_local_aidlist::sorted_particle_ids", octants.size());
 
         // fill the sorted aid list
-        Kokkos::parallel_for("Fill sorted aid list", octants.size(), KOKKOS_LAMBDA(const size_t i) {
+        Kokkos::parallel_for("aid_list::sort_local_aidlist::Fill sorted aid list", octants.size(), KOKKOS_LAMBDA(const size_t i) {
             sorted_octants(i) = octants(indices(i));
             sorted_particle_ids(i) = particle_ids(indices(i));
         });
@@ -232,7 +240,83 @@ namespace ippl {
         return;
     }
 
+//implemented this function to sort the local aid list using Kokkos::sort, is slower for some reason
+// would be cool to try again using cuda
+    template <size_t Dim>
+    void AidList<Dim>::sort_local_aidlist_kokkos() {
+        Kokkos::Profiling::pushRegion("aid_list::sort_local_aidlist");
+        Kokkos::UnorderedMap<morton_code, int> map(size());
+        using map_op_type     = Kokkos::UnorderedMapInsertOpTypes<Kokkos::View<int*>, morton_code>;
+        using atomic_add_type = typename map_op_type::AtomicAdd;
+        atomic_add_type atomic_add;
 
+        // fill p_ids, m_cs and map
+        Kokkos::parallel_for(
+            "aid_list::fill map", size(), KOKKOS_LAMBDA(const int i) {
+                morton_code key = octants(i);
+                map.insert(key, 1, atomic_add);
+            });
+
+        // get the number of unique keys
+        int num_unique_keys = map.size();
+
+        // copy keys to a view
+        Kokkos::View<morton_code*> keys("aid_list::sort_local_aidlist::unique_keys",
+                                        num_unique_keys);
+
+        int total_size;
+        Kokkos::parallel_scan(
+            "aid:list::sort_local_aidlist::extract keys to view", map.capacity(),
+            KOKKOS_LAMBDA(const u_int32_t i, int& update, const bool final) {
+                if (map.valid_at(i)) {
+                    if (final) {
+                        keys(update) = map.key_at(i);
+                    }
+                    update++;
+                }
+            },
+            total_size);
+        Kokkos::fence();
+
+        // print keys
+        Kokkos::Profiling::pushRegion("aid_list::sort_local_aidlist::sort keys");
+        Kokkos::sort(keys);
+        Kokkos::Profiling::popRegion();
+        Kokkos::UnorderedMap<morton_code, int> start_indices_map(num_unique_keys);
+        Kokkos::UnorderedMap<morton_code, int> num_add_map(num_unique_keys);
+        Kokkos::parallel_scan(
+            "aid_list::sort_local_aidlist::prefix sum for indices", num_unique_keys,
+            KOKKOS_LAMBDA(const int i, int& update, const bool final) {
+                if (final) {
+                    start_indices_map.insert(keys(i), update);
+                    num_add_map.insert(keys(i), i);
+                }
+                update += map.value_at(map.find(keys(i)));
+            });
+
+        // refill p_ids and m_cs
+        Kokkos::View<size_t*> p_ids_sorted("aid_list::sort_local_octants::Particle Ids Sorted",
+                                           size());
+        Kokkos::View<morton_code*> m_cs_sorted(
+            "aid_//list::sort_local_octants::Morton codes Sorted", size());
+
+        Kokkos::View<int*> num_added = Kokkos::View<int*>(
+            "aid_lits::sort_local_octants::Num Added refill counter", num_unique_keys);
+
+        Kokkos::parallel_for(
+            "aid_list::sort_local_octants::Refill p_ids and m_cs", size(),
+            KOKKOS_LAMBDA(const int i) {
+                morton_code key = octants(i);
+                int num_add = Kokkos::atomic_add_fetch(
+                    &num_added(num_add_map.value_at(num_add_map.find(key))), 1);
+                int index = start_indices_map.value_at(start_indices_map.find(key)) + num_add - 1;
+                p_ids_sorted(index) = particle_ids(i);
+                m_cs_sorted(index)  = octants(i);
+            });
+        octants      = m_cs_sorted;
+        particle_ids = p_ids_sorted;
+        Kokkos::Profiling::popRegion();
+    }
 
     template <size_t Dim>
     template <typename PLayout>
@@ -253,19 +337,19 @@ namespace ippl {
                 "can only initialize if all particles are gathered on one rank!");
         }
 
-        const size_t n_particles = particles.getTotalNum();
-        const size_t grid_size = (size_t(1) << max_depth);
-        using real_coordinate = real_coordinate_template<Dim>;
-        using grid_coordinate = grid_coordinate_template<Dim>;
+        const size_t n_particles               = particles.getTotalNum();
+        const size_t grid_size                 = (size_t(1) << max_depth);
+        using real_coordinate                  = real_coordinate_template<Dim>;
+        using grid_coordinate                  = grid_coordinate_template<Dim>;
         const real_coordinate root_bounds_size = root_bounds.get_max() - root_bounds.get_min();
 
         // allocate the space for the octants and the particle ids
-        octants = Kokkos::View<morton_code *> ("octants", n_particles);
-        particle_ids = Kokkos::View<size_t *> ("particle_ids", n_particles);
+        octants      = Kokkos::View<morton_code*>("aid_list::octants", n_particles);
+        particle_ids = Kokkos::View<size_t*>("aid_list::particle_ids", n_particles);
 
         Kokkos::parallel_for(
-            "InitializeAidList", Kokkos::RangePolicy<>(0, n_particles),
-            KOKKOS_LAMBDA(const size_t i) {
+            "aid_list::initialize_from_rank::InitializeAidList",
+            Kokkos::RangePolicy<>(0, n_particles), KOKKOS_LAMBDA(const size_t i) {
                 // Calculate grid coordinate
                 const grid_coordinate grid_coord = static_cast<grid_coordinate>(
                     (particles.R(i) - root_bounds.get_min()) * (grid_size - 1) / root_bounds_size);
@@ -274,7 +358,7 @@ namespace ippl {
                 particle_ids(i) = i;
             });
 
-        //log size of aid list
+        // log size of aid list
         logger << "Size of aid list: " << octants.size() << endl;
     }
 
@@ -282,9 +366,9 @@ namespace ippl {
     size_t AidList<Dim>::getLowerBoundIndex(morton_code target_octant) const {
         const auto lower_bound_it =
             std::lower_bound(octants.data(), octants.data() + octants.extent(0), target_octant,
-                [](const morton_code& octants_entry, const morton_code& target) {
-                    return octants_entry < target;
-                });
+                             [](const morton_code& octants_entry, const morton_code& target) {
+                                 return octants_entry < target;
+                             });
 
         return static_cast<size_t>(lower_bound_it - this->octants.data());
     }
@@ -293,9 +377,9 @@ namespace ippl {
     size_t AidList<Dim>::getUpperBoundIndexExclusive(morton_code target_octant) const {
         const auto upper_bound_it =
             std::upper_bound(octants.data(), octants.data() + octants.extent(0), target_octant,
-                [](const morton_code& target, const morton_code& octants_entry) {
-                    return target < octants_entry;
-                });
+                             [](const morton_code& target, const morton_code& octants_entry) {
+                                 return target < octants_entry;
+                             });
 
         return static_cast<size_t>(upper_bound_it - this->octants.data());
     }
@@ -411,7 +495,7 @@ namespace ippl {
             for (unsigned rank = 0; rank < world_size; ++rank) {
                 /*
                  * Skip ranks where min_octant == max_octant
-                 * this works since ranks whose octants are for example way 
+                 * this works since ranks whose octants are for example way
                  * bigger than the ones here will have set min_octant = max_octant = 0
                  */
                 if (ranges(2 * rank) == ranges(2 * rank + 1)) {
@@ -438,7 +522,7 @@ namespace ippl {
             idx_window.fence(0);
 
             Kokkos::parallel_reduce(
-                "compute new size", world_size,
+                "aid_list::innitFromOctants::compute new size", world_size,
                 KOKKOS_LAMBDA(const size_t i, size_t& local_new_size) {
                     local_new_size += recv_indices(2 * i + 1) - recv_indices(2 * i);
                 },
@@ -449,16 +533,19 @@ namespace ippl {
          * Exchange the octants between ranks.
          */
         {
-            Kokkos::View<morton_code*> new_octants("new_octants", new_size_after_exchange);
-            Kokkos::View<size_t*> new_particle_ids("new_particle_ids", new_size_after_exchange);
+            Kokkos::View<morton_code*> new_octants("aid_list::innitFromOctants::new_octants",
+                                                   new_size_after_exchange);
+            Kokkos::View<size_t*> new_particle_ids("aid_list::initFromOctants::new_particle_ids",
+                                                   new_size_after_exchange);
 
             auto new_octants_span = std::span(new_octants.data(), new_octants.size());
-            auto new_particle_ids_span = std::span(new_particle_ids.data(), new_particle_ids.size());
+            auto new_particle_ids_span =
+                std::span(new_particle_ids.data(), new_particle_ids.size());
 
-            auto new_octants_start_it = new_octants_span.begin();
+            auto new_octants_start_it   = new_octants_span.begin();
             auto new_particles_start_it = new_particle_ids_span.begin();
 
-            auto octants_span = std::span(octants.data(), octants.size());
+            auto octants_span      = std::span(octants.data(), octants.size());
             auto particle_ids_span = std::span(particle_ids.data(), particle_ids.size());
 
             mpi::rma::Window<mpi::rma::Active> octants_window;
@@ -479,7 +566,7 @@ namespace ippl {
                 size_t recv_size = recv_indices(2 * rank + 1) - recv_indices(2 * rank);
                 assert(recv_size > 0);
 
-                // get the iterators inbetween which the new octants from this 
+                // get the iterators inbetween which the new octants from this
                 // rank will be inserted
                 auto start_it_octants      = new_octants_start_it + last_insert_idx;
                 auto end_it_octants        = start_it_octants + recv_size;
@@ -490,7 +577,7 @@ namespace ippl {
                               "Iterator does not satisfy contiguous_iterator");
 
                 // we don't need to communicate with ourselves
-                // This piece of spaghetti code is the Kokkos compatible way 
+                // This piece of spaghetti code is the Kokkos compatible way
                 // I found to copy subarrays from one view to another
                 // improvements are welcome :)
                 if (rank == world_rank) {
@@ -570,9 +657,11 @@ namespace ippl {
         IpplTimings::TimerRef timer = IpplTimings::getTimer("getNumParticlesInOctantsParallel");
         IpplTimings::startTimer(timer);
 
-        morton_code min_step = morton_helper.get_step_size(max_depth);
+        morton_code min_step   = morton_helper.get_step_size(max_depth);
         morton_code min_octant = morton_helper.get_deepest_first_descendant(octant_container[0]);
-        morton_code max_octant = morton_helper.get_deepest_last_descendant(octant_container[octant_container.size() - 1]) + min_step;
+        morton_code max_octant =
+            morton_helper.get_deepest_last_descendant(octant_container[octant_container.size() - 1])
+            + min_step;
         innitFromOctants(min_octant, max_octant);
 
         Kokkos::View<size_t*> result("result", octant_container.size());
