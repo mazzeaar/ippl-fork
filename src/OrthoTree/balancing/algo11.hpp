@@ -2,59 +2,24 @@
 
 #include <cassert>
 #include <cstddef>
-#include <string>
 
 #include "../OrthoTree.h"
 namespace ippl {
-    /*
-    TODO:
-    - IMPLEMENT THIS FUNCTION
-    - WRITE TESTS FOR IT
-    - THINK HARD IF THE GIVEN SIGNATURE MAKES SENSE
-    - UNCOMMENT THE INCLUSION OF THIS FILE IN ORTHO_TREE.HPP (BOTTOM)
-    */
 
     // ================================
     // ================================
     // DEVELOPMENT HELPERS
-    // TODO: delete those
     // ================================
     // ================================
 
     /**
-     * @warning This function is just for development purposes, this way we know if stuff is sorted
-     * or not. this has to be removed somehow before merging this branch
-     */
-    void sort_if_necessary(Kokkos::View<morton_code*> check_view, const std::string& view_name,
-                           const std::string& func_name) {
-        const std::string COLOR_RED   = "\e[0;31m";
-        const std::string COLOR_RESET = "\e[0;31m";
-
-        if (check_view.size() > 0
-            && !std::is_sorted(check_view.data(), check_view.data() + check_view.size())) {
-            std::cerr << "{view: " << view_name << "}" << " IS NOT SORTED IN "
-                      << "{func: " << func_name << "}"
-                      << " THE PROBLEM IS PROBABLY THE PARALLEL FOR TO PUPULATE THE VIEW!";
-            std::cerr << std::endl;
-            std::sort(check_view.data(), check_view.data() + check_view.size());
-        }
-    }
-
-    /**
-     * @brief As of now morton_helper.get_neighbours returns a std::vector (aliased as vector_t),
-     * this is no bueno. This helper enables us to write algo11 as if neighbours is already
-     * implemented to return views
+     * @brief the morton_helper function get_neighbors only returns neighbors of the same level as the input octant,
+     * but we also need the neighbors at all the finer levels
      */
     Kokkos::View<morton_code*> get_neighbour_view(const auto& morton_helper,
                                                   const morton_code octant, const size_t max_depth) {
-        /**
-         * this 'vector_t' is on purpose, we will get
-         * compilation errors when we change the
-         * return type to view
-         *
-         * just delete this whole function and replace its call with a direct call to
-         * 'get_neighbors'
-         */
+        //TODO change morton codes to views
+        // Kokkos::View<morton_code> neighbour_vec = morton_helper.get_neighbors(octant, morton_helper.get_depth(octant));
         vector_t<morton_code> neighbour_vec =
             morton_helper.get_neighbors(octant, morton_helper.get_depth(octant));
         Kokkos::View<morton_code*> neighbour_view("neighbour_view", 0);
@@ -83,28 +48,14 @@ namespace ippl {
     // ================================
 
     /**
-     * @brief Takes an arbitrary amount of views and concatenates them into one view. The views are
-     * concatenated in the same order they are passed into the function
+     * @brief Takes two sorted views as input and concatenates them into a sorted output view
      */
-    template <typename... ViewTypes>
-    Kokkos::View<morton_code*> concatenateViews(ViewTypes... views) {
-        size_t total_size = (views.extent(0) + ...);
+    Kokkos::View<morton_code*> concatenateViews(Kokkos::View<morton_code*> view_one, Kokkos::View<morton_code*> view_two) {
+        size_t total_size = view_one.extent(0) + view_two.extent(0);
 
         Kokkos::View<morton_code*> result("concatenated_view", total_size);
+        std::merge(view_one.data(), view_one.data() + view_one.extent(0), view_two.data(), view_two.data() + view_two.extent(0), result.data());
 
-        // This has to be done in such a way that the concatenated view is sorted
-        // TODO
-        size_t offset  = 0;
-        auto copy_view = [&](auto& view) {
-            Kokkos::parallel_for(
-                "CopyViewData", view.extent(0),
-                KOKKOS_LAMBDA(const size_t i) { result(i + offset) = view(i); });
-            offset += view.extent(0);
-        };
-
-        (copy_view(views), ...);
-        // TODO remove this sort, once the data concatenation keeps the ordering of elements
-        std::sort(result.data(), result.data() + result.size());
         return result;
     }
 
@@ -128,17 +79,6 @@ namespace ippl {
 
     /**
      * @brief Filters octants based on the given predicate
-     * @warning out_view will NOT be sorted!
-     *
-     * by @mathieu TODO: Why not just initialize the G_View with a fairly high number of memory, add
-     * more if necessary and fit to size in the end by counting when you insert an element that way
-     * you dont have to find out which octants to insert twice TODO
-     *
-     * answer by @aaron:
-     * 1.   i have now extracted the filtering steps into one function, this way we can
-     *      just apply this optimisation in here.
-     * 2.   Question: we should measure if (allocation + resizing) is faster than two filter passes
-     *      (the filter is fully Kokkos::parallel'ed)
      */
     template <typename Predicate>
     Kokkos::View<morton_code*> filter_octants(const Kokkos::View<morton_code*> in_view,
@@ -186,6 +126,10 @@ namespace ippl {
     // ================================
     // ================================
 
+    /**
+     * @brief This function initializes the D_view of algorithm11, this view
+     * will contain all intra-processor boundary octants
+     */
     Kokkos::View<morton_code*> initialise_D_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> C_view,
@@ -213,12 +157,14 @@ namespace ippl {
             return false;
         };
 
-        // D = intra-proc boundaries
         Kokkos::View<morton_code*> D_view = filter_octants(C_view, should_insert);
-        sort_if_necessary(D_view, "D_view", __func__);
         return D_view;
     }
 
+    /**
+     * @brief This function initializes the G_view for algorithm 11, this view will
+     * contain all inter-processor boundary octants
+     */
     Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> F_view,
@@ -244,10 +190,13 @@ namespace ippl {
         };
 
         Kokkos::View<morton_code*> G_view = filter_octants(F_view, should_insert);
-        sort_if_necessary(G_view, "G_view", __func__);
         return G_view;
     }
 
+    /**
+     * @brief This function initializes the R_view of algorithm 11, this view will
+     * contain the balanced tree on the given processor
+     */
     Kokkos::View<morton_code*> initialise_R_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
                                                  Kokkos::View<morton_code*> H_view,
@@ -264,24 +213,18 @@ namespace ippl {
         Kokkos::View<morton_code*> H_filtered = filter_octants(H_view, should_insert);
         Kokkos::View<morton_code*> F_filtered = filter_octants(F_view, should_insert);
         Kokkos::View<morton_code*> R_view     = concatenateViews(H_filtered, F_filtered);
-        sort_if_necessary(R_view, "R_view", __func__);
         return R_view;
     }
 
-    /*
-    We do the following: Each rank puts its B_view into a window, then each rank iterates through
-    all other ranks and does checks.
-
-    Question: maybe it is more efficient to do the inverse? put B_view into a window and then each
-    rank can directly take what it needs. BUT then we also need to communicate what we have received
-    to the rank whence we took it...
+    /**
+     * @brief this function returns two views that give the number of octants to send to other ranks
+     * and the octants that have to be sent to those ranks for the first stage communication
+     * @return data_to_send: the octants that have to be sent to the different ranks
+     * @return offsets: a prefix sum that gives the index ranges in data_to_send for the different ranks
+     * as difference of offsets(target_rank) - offsets(target_rank - 1)
      */
     auto inter_proc_boundaries(const auto& morton_helper, Kokkos::View<morton_code*> G_view,
                                Kokkos::View<morton_code*> B_view) {
-        /*
-        the return type should probably be a pair of views.
-        one with the octants we send, and one with offsets for each target rank
-        */
 
         const size_t world_size = Comm->size();
         const size_t world_rank = Comm->rank();
@@ -380,12 +323,15 @@ namespace ippl {
         return std::make_pair(data_to_send, offsets);
     }
 
+    /**
+     * @brief this function returns two views that give the number of octants to send to other ranks
+     * and the octants that have to be sent to those ranks for the second stage communication
+     * @return data_to_send: the octants that have to be sent to the different ranks
+     * @return offsets: a prefix sum that gives the index ranges in data_to_send for the different ranks
+     * as difference of offsets(target_rank) - offsets(target_rank - 1)
+     */
     auto K_inter_proc_boundaries(const auto& morton_helper, Kokkos::View<morton_code*> G_view,
                                Kokkos::View<morton_code*> T_view, Kokkos::View<morton_code*> old_overlapping_octants, Kokkos::View<size_t*> old_overlap_offsets, Kokkos::View<size_t*> T_recv_sizes) {
-        /*
-        the return type should probably be a pair of views.
-        one with the octants we send, and one with offsets for each target rank
-        */
 
         const size_t world_size = Comm->size();
         const size_t world_rank = Comm->rank();
@@ -421,7 +367,6 @@ namespace ippl {
                 return std::find(sent_octs.begin(), sent_octs.end(), search_oct) != sent_octs.end();
             };
 
-                // naive for now, im lazy
                 bool new_insert = true;
                 for (size_t i = 0; i < G_view.size(); ++i) {
                     new_insert = true;
@@ -489,72 +434,6 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
         Kokkos::View<morton_code*> B_view = L_view;  // algo4_11(L_view);
 
-        // #define AEIOWFOEWIWELI
-
-#ifndef AEIOWFOEWIWELI
-        logger.on(true);
-        logger.setOutputLevel(1);
-#define LOG              \
-    Comm->barrier();     \
-    if (world_rank == 0) \
-    logger << level1 << "Algo11: "
-
-        auto log_the_view = [&](const auto& view, const auto& view_name) {
-            Comm->barrier();
-            int ring_buff;
-            if (Comm->rank() > 0) {
-                mpi::Status status;
-                Comm->recv(&ring_buff, 1, Comm->rank() - 1, 0, status);
-            } else {
-                std::cerr << view_name << ".size():" << std::endl;
-            }
-
-            std::cerr << "  " << Comm->rank() << ":  " << view.extent(0) << std::endl;
-
-            if (Comm->rank() + 1 < Comm->size()) {
-                Comm->send(ring_buff, 1, Comm->rank() + 1, 0);
-            } else {
-                std::cerr << std::endl;
-            }
-            Comm->barrier();
-        };
-
-        auto print_the_view = [&](const auto& view, const auto& view_name) {
-            Comm->barrier();
-            int ring_buff;
-            if (Comm->rank() > 0) {
-                mpi::Status status;
-                Comm->recv(&ring_buff, 1, Comm->rank() - 1, 0, status);
-            } else {
-                std::cerr << view_name << std::endl;
-            }
-
-            std::cerr << "  " << Comm->rank() << ": {";
-            for (size_t i = 0; i < view.extent(0); ++i) {
-                std::cerr << view(i);
-                if (i + 1 < view.extent(0)) {
-                    std::cerr << ", ";
-                }
-            }
-            std::cerr << "}" << std::endl;
-
-            if (Comm->rank() + 1 < Comm->size()) {
-                Comm->send(ring_buff, 1, Comm->rank() + 1, 0);
-            } else {
-                std::cerr << std::endl;
-            }
-            Comm->barrier();
-        };
-
-#define LOG_VIEW(logging_view)   log_the_view(logging_view, #logging_view)
-#define PRINT_VIEW(logging_view) print_the_view(logging_view, #logging_view)
-#else
-
-#define LOG           std::cerr
-#define LOG_VIEW(x)   ((void)x)
-#define PRINT_VIEW(x) ((void)x)
-#endif
-
         // this has to be sequential, else we have to sort C_view at the end
         Kokkos::View<morton_code*> C_view("C_view", 0);
         std::for_each(B_view.data(), B_view.data() + B_view.size(),
@@ -567,7 +446,7 @@ namespace ippl {
 
                           const size_t count = count_octants(L_view, should_copy);
                           if (count == 0) {
-                              logger << level1 << "why is count == 0?" << endl;
+                              std::cerr << "why is count == 0?" << endl;
                               return;
                           }
 
@@ -583,24 +462,18 @@ namespace ippl {
                                             }
                                         });
 
-                          // PRINT_VIEW(Temp_view);
                           auto algo7_view = algo7(octant_B, Temp_view);
-                          // PRINT_VIEW(algo7_view);
                           C_view = concatenateViews(C_view, algo7_view);
                       });
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view, max_depth_m);
 
         // ripple propagation
-        // D_view must be sorted here TODO possible bug
         auto S_view = algo9(D_view);
         auto concatenated_S_C = concatenateViews(S_view, C_view);
         auto F_view = linearise_octants(concatenated_S_C);
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
 
-        /**
-         * overlapping_octants is a flat view of the octants we send.
-         * overlap_offsets is a prefix sum (?!), where overlap_offsets(0) = send_size rank 0
-         */
+        // T_view
         auto [overlapping_octants, overlap_offsets] =
             inter_proc_boundaries(morton_helper, G_view, B_view);
 
@@ -633,7 +506,6 @@ namespace ippl {
                 }
                 size_buff = overlap_offsets(target_rank) - (target_rank == 0? 0 : overlap_offsets(target_rank-1));
 
-                size_window.fence(0);
                 size_window.put(size_buff, target_rank, world_rank);
                 size_window.fence(0);
             }
@@ -674,8 +546,11 @@ namespace ippl {
                 if (target_rank == world_rank) {
                     continue;
                 }
-                // TODO
-                // if(end - start == 0) continue;
+                if(end - start == 0){
+                    size_window.fence(0);
+                    T_window.fence(0);
+                    continue;
+                }
 
                 auto start_iter = T_span.begin() + total_recv_size + start;
                 auto end_iter   = T_span.begin() + total_recv_size + end;
@@ -697,8 +572,7 @@ namespace ippl {
          * Each rank should now have all the octants it needs
          */
 
-        // =========================================
-        // working on K_view
+        // K_view
         auto [K_overlapping_octants, K_overlap_offsets] =
             K_inter_proc_boundaries(morton_helper, G_view, T_view, overlapping_octants, overlap_offsets, recv_sizes);
 
@@ -773,8 +647,11 @@ namespace ippl {
                 if (target_rank == world_rank) {
                     continue;
                 }
-                // TODO
-                // if(K_overlap_offsets(target_rank) == 0) continue;
+                if(end - start == 0){
+                    K_size_window.fence(0);
+                    K_window.fence(0);
+                    continue;
+                }
 
                 auto start_iter = K_span.begin() + K_total_recv_size + start;
                 auto end_iter   = K_span.begin() + K_total_recv_size + end;
@@ -790,9 +667,8 @@ namespace ippl {
             }
             Kokkos::resize(K_view, K_total_recv_size);
         }
-        // =========================================
 
-        auto conc_G_T_K = concatenateViews(G_view, T_view , K_view);
+        auto conc_G_T_K = concatenateViews(G_view, concatenateViews(T_view , K_view));
 
         auto H_view = algo9(conc_G_T_K);
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
@@ -800,5 +676,4 @@ namespace ippl {
         assert(is_balanced(R_view));
         return R_view;
     }
-
 }  // namespace ippl
