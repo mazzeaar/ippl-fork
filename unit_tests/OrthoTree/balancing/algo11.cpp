@@ -128,7 +128,7 @@ TEST(BalancingTest, TestTest) {
     tree.octants_to_file(res);
     /*/
      constexpr size_t Dim = 2;
-     size_t max_depth = 3;
+     size_t max_depth = 4;
      OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0},
     real_coordinate_template<Dim>{1, 1})); Morton<Dim> morton(max_depth);
 
@@ -159,6 +159,7 @@ TEST(BalancingTest, TestTest) {
 
      }
      */
+    /*
      Kokkos::View<morton_code*> tree_view("tree_view", 10);
     
     tree_view(0) = morton.encode({0, 0}, 2);
@@ -171,6 +172,86 @@ TEST(BalancingTest, TestTest) {
     tree_view(7) = morton.encode({4, 0}, 1);
     tree_view(8) = morton.encode({0, 4}, 1);
     tree_view(9) = morton.encode({4, 4}, 1);
+
+    Kokkos::View<morton_code*> expected("expected", 19);
+    for (size_t i = 0; i < 7; ++i) {
+        expected(i) = tree_view(i);
+    }
+    expected(7) = morton.encode({0, 4}, 2);
+    expected(8) = morton.encode({2, 4}, 2);
+    expected(9) = morton.encode({4, 4}, 2);
+    expected(10) = morton.encode({4, 2}, 2);
+    expected(11) = morton.encode({4, 0}, 2);
+    expected(12) = morton.encode({0, 6}, 2);
+    expected(13) = morton.encode({2, 6}, 2);
+    expected(14) = morton.encode({4, 6}, 2);
+    expected(15) = morton.encode({6, 6}, 2);
+    expected(16) = morton.encode({6, 4}, 2);
+    expected(17) = morton.encode({6, 2}, 2);
+    expected(18) = morton.encode({6, 0}, 2);
+
+    std::sort(expected.data(), expected.data() + expected.size());
+    */
+     Kokkos::View<morton_code*> tree_view("tree_view", 12);
+
+     if(Comm->rank() == 0){
+        Kokkos::resize(tree_view, 12);
+        tree_view(0) = morton.encode({0, 0}, 3);
+        tree_view(1) = morton.encode({2, 0}, 4);
+        tree_view(2) = morton.encode({3, 0}, 4);
+        tree_view(3) = morton.encode({2, 1}, 4);
+        tree_view(4) = morton.encode({3, 1}, 4);
+        tree_view(5) = morton.encode({0, 2}, 3);
+        tree_view(6) = morton.encode({2, 2}, 3);
+        tree_view(7) = morton.encode({4, 0}, 2);
+        tree_view(8) = morton.encode({0, 4}, 2);
+        tree_view(9) = morton.encode({4, 4}, 3);
+        tree_view(10) = morton.encode({6, 4}, 3);
+        tree_view(11) = morton.encode({4, 6}, 3);
+     } else if(Comm->rank() == 1){
+        Kokkos::resize(tree_view, 12);
+        tree_view(0) = morton.encode({6, 6}, 4);
+        tree_view(1) = morton.encode({7, 6}, 4);
+        tree_view(2) = morton.encode({6, 7}, 4);
+        tree_view(3) = morton.encode({7, 7}, 4);
+        tree_view(4) = morton.encode({8, 0}, 2);
+        tree_view(5) = morton.encode({12, 0}, 3);
+        tree_view(6) = morton.encode({14, 0}, 4);
+        tree_view(7) = morton.encode({15, 0}, 4);
+        tree_view(8) = morton.encode({14, 1}, 4);
+        tree_view(9) = morton.encode({15, 1}, 4);
+        tree_view(10) = morton.encode({12, 2}, 3);
+        tree_view(11) = morton.encode({14, 2}, 3);
+        
+     } else if(Comm->rank() == 2){
+        Kokkos::resize(tree_view, 11);
+        tree_view(0) = morton.encode({8, 4}, 2);
+        tree_view(1) = morton.encode({12, 4}, 3);
+        tree_view(2) = morton.encode({14, 4}, 3);
+        tree_view(3) = morton.encode({12, 6}, 3);
+        tree_view(4) = morton.encode({14, 6}, 3);
+        tree_view(5) = morton.encode({0, 8}, 1);
+        tree_view(6) = morton.encode({8, 8}, 2);
+        tree_view(7) = morton.encode({12, 8}, 3);
+        tree_view(8) = morton.encode({14, 8}, 3);
+        tree_view(9) = morton.encode({12, 10}, 4);
+        tree_view(10) = morton.encode({13, 10}, 4);
+        
+     } else{
+        Kokkos::resize(tree_view, 11);
+        tree_view(0) = morton.encode({12, 11}, 4);
+        tree_view(1) = morton.encode({13, 11}, 4);
+        tree_view(2) = morton.encode({14, 10}, 3);
+        tree_view(3) = morton.encode({8, 12}, 2);
+        tree_view(4) = morton.encode({12, 12}, 3);
+        tree_view(5) = morton.encode({14, 12}, 3);
+        tree_view(6) = morton.encode({12, 14}, 3);
+        tree_view(7) = morton.encode({14, 14}, 4);
+        tree_view(8) = morton.encode({15, 14}, 4);
+        tree_view(9) = morton.encode({14, 15}, 4);
+        tree_view(10) = morton.encode({15, 15}, 4);
+
+     }
 
      std::sort(tree_view.data(), tree_view.data() + tree_view.size());
      auto balanced_tree = tree_view;
@@ -185,25 +266,6 @@ TEST(BalancingTest, TestTest) {
         throw e;
     }
 
-     Kokkos::View<morton_code*> expected("expected", 19);
-     for (size_t i = 0; i < 7; ++i) {
-         expected(i) = tree_view(i);
-     }
-     expected(7) = morton.encode({0, 4}, 2);
-     expected(8) = morton.encode({2, 4}, 2);
-     expected(9) = morton.encode({4, 4}, 2);
-     expected(10) = morton.encode({4, 2}, 2);
-     expected(11) = morton.encode({4, 0}, 2);
-     expected(12) = morton.encode({0, 6}, 2);
-     expected(13) = morton.encode({2, 6}, 2);
-     expected(14) = morton.encode({4, 6}, 2);
-     expected(15) = morton.encode({6, 6}, 2);
-     expected(16) = morton.encode({6, 4}, 2);
-     expected(17) = morton.encode({6, 2}, 2);
-     expected(18) = morton.encode({6, 0}, 2);
-
-     std::sort(expected.data(), expected.data() + expected.size());
-
      /*
     auto size_str = "On rank " + std::to_string(Comm->rank()) + ", balanced_tree.size(): " + std::to_string(balanced_tree.size());
      std::cerr << size_str << std::endl;
@@ -211,7 +273,7 @@ TEST(BalancingTest, TestTest) {
         auto output = "On rank " + std::to_string(Comm->rank()) + ", balanced_tree(" + std::to_string(i) + "): " + std::to_string(balanced_tree(i));
         std::cerr << output << std::endl;
      }
-     */
+     *
      EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
      for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
          EXPECT_EQ(balanced_tree(i), expected(i))
@@ -248,6 +310,79 @@ TEST(BalancingTest, TestTest) {
         EXPECT_EQ(242, balanced_tree(7)) << "expected = " << 242 << ", actual = " << balanced_tree(7);
     }
     */
+    if(Comm->rank() == 0){
+        EXPECT_EQ(15, balanced_tree.size());
+        EXPECT_EQ(morton.encode({0, 0}, 3), balanced_tree(0));
+        EXPECT_EQ(morton.encode({2, 0}, 4), balanced_tree(1));
+        EXPECT_EQ(morton.encode({3, 0}, 4), balanced_tree(2));
+        EXPECT_EQ(morton.encode({2, 1}, 4), balanced_tree(3));
+        EXPECT_EQ(morton.encode({3, 1}, 4), balanced_tree(4));
+        EXPECT_EQ(morton.encode({0, 2}, 3), balanced_tree(5));
+        EXPECT_EQ(morton.encode({2, 2}, 3), balanced_tree(6));
+        EXPECT_EQ(morton.encode({4, 0}, 3), balanced_tree(7));
+        EXPECT_EQ(morton.encode({6, 0}, 3), balanced_tree(8));
+        EXPECT_EQ(morton.encode({4, 2}, 3), balanced_tree(9));
+        EXPECT_EQ(morton.encode({6, 2}, 3), balanced_tree(10));
+        EXPECT_EQ(morton.encode({0, 4}, 2), balanced_tree(11));
+        EXPECT_EQ(morton.encode({4, 4}, 3), balanced_tree(12));
+        EXPECT_EQ(morton.encode({6, 4}, 3), balanced_tree(13));
+        EXPECT_EQ(morton.encode({4, 6}, 3), balanced_tree(14));
+    } else if(Comm->rank() == 1){
+        EXPECT_EQ(12, balanced_tree.size());
+        EXPECT_EQ(morton.encode({6, 6}, 4), balanced_tree(0));
+        EXPECT_EQ(morton.encode({7, 6}, 4), balanced_tree(1));
+        EXPECT_EQ(morton.encode({6, 7}, 4), balanced_tree(2));
+        EXPECT_EQ(morton.encode({7, 7}, 4), balanced_tree(3));
+        EXPECT_EQ(morton.encode({8, 0}, 2), balanced_tree(4));
+        EXPECT_EQ(morton.encode({12, 0}, 3), balanced_tree(5));
+        EXPECT_EQ(morton.encode({14, 0}, 4), balanced_tree(6));
+        EXPECT_EQ(morton.encode({15, 0}, 4), balanced_tree(7));
+        EXPECT_EQ(morton.encode({14, 1}, 4), balanced_tree(8));
+        EXPECT_EQ(morton.encode({15, 1}, 4), balanced_tree(9));
+        EXPECT_EQ(morton.encode({12, 2}, 3), balanced_tree(10));
+        EXPECT_EQ(morton.encode({14, 2}, 3), balanced_tree(11));
+    } else if(Comm->rank() == 2){
+        EXPECT_EQ(23, balanced_tree.size());
+        EXPECT_EQ(morton.encode({8, 4}, 3), balanced_tree(0));
+        EXPECT_EQ(morton.encode({10, 4}, 3), balanced_tree(1));
+        EXPECT_EQ(morton.encode({8, 6}, 3), balanced_tree(2));
+        EXPECT_EQ(morton.encode({10, 6}, 3), balanced_tree(3));
+        EXPECT_EQ(morton.encode({12, 4}, 3), balanced_tree(4));
+        EXPECT_EQ(morton.encode({14, 4}, 3), balanced_tree(5));
+        EXPECT_EQ(morton.encode({12, 6}, 3), balanced_tree(6));
+        EXPECT_EQ(morton.encode({14, 6}, 3), balanced_tree(7));
+        EXPECT_EQ(morton.encode({0, 8}, 2), balanced_tree(8));
+        EXPECT_EQ(morton.encode({4, 8}, 3), balanced_tree(9));
+        EXPECT_EQ(morton.encode({6, 8}, 3), balanced_tree(10));
+        EXPECT_EQ(morton.encode({4, 10}, 3), balanced_tree(11));
+        EXPECT_EQ(morton.encode({6, 10}, 3), balanced_tree(12));
+        EXPECT_EQ(morton.encode({0, 12}, 2), balanced_tree(13));
+        EXPECT_EQ(morton.encode({4, 12}, 2), balanced_tree(14));
+        EXPECT_EQ(morton.encode({8, 8}, 3), balanced_tree(15));
+        EXPECT_EQ(morton.encode({10, 8}, 3), balanced_tree(16));
+        EXPECT_EQ(morton.encode({8, 10}, 3), balanced_tree(17));
+        EXPECT_EQ(morton.encode({10, 10}, 3), balanced_tree(18));
+        EXPECT_EQ(morton.encode({12, 8}, 3), balanced_tree(19));
+        EXPECT_EQ(morton.encode({14, 8}, 3), balanced_tree(20));
+        EXPECT_EQ(morton.encode({12, 10}, 4), balanced_tree(21));
+        EXPECT_EQ(morton.encode({13, 10}, 4), balanced_tree(22));
+    } else if(Comm->rank() == 3){
+        EXPECT_EQ(14, balanced_tree.size());
+        EXPECT_EQ(morton.encode({12, 11}, 4), balanced_tree(0));
+        EXPECT_EQ(morton.encode({13, 11}, 4), balanced_tree(1));
+        EXPECT_EQ(morton.encode({14, 10}, 3), balanced_tree(2));
+        EXPECT_EQ(morton.encode({8, 12}, 3), balanced_tree(3));
+        EXPECT_EQ(morton.encode({10, 12}, 3), balanced_tree(4));
+        EXPECT_EQ(morton.encode({8, 14}, 3), balanced_tree(5));
+        EXPECT_EQ(morton.encode({10, 14}, 3), balanced_tree(6));
+        EXPECT_EQ(morton.encode({12, 12}, 3), balanced_tree(7));
+        EXPECT_EQ(morton.encode({14, 12}, 3), balanced_tree(8));
+        EXPECT_EQ(morton.encode({12, 14}, 3), balanced_tree(9));
+        EXPECT_EQ(morton.encode({14, 14}, 4), balanced_tree(10));
+        EXPECT_EQ(morton.encode({15, 14}, 4), balanced_tree(11));
+        EXPECT_EQ(morton.encode({14, 15}, 4), balanced_tree(12));
+        EXPECT_EQ(morton.encode({15, 15}, 4), balanced_tree(13));
+    }
 }
 
 int main(int argc, char** argv) {
