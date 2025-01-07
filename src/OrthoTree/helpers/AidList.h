@@ -151,6 +151,11 @@ namespace ippl {
          * @brief This function sorts the part of the aid list that is local to the rank. Using std::sort
          */
         void sort_local_aidlist();
+
+        /**
+         * @brief This function sorts the part of the aid list that is local to the rank. Using Kokkos::sort
+         */
+        void sort_local_aidlist_kokkos();
     };
 
 }  // namespace ippl
