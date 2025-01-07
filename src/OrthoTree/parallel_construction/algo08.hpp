@@ -28,7 +28,7 @@ namespace ippl {
         // TODO
         //assert(input_size > 0
         //       && "Octants.size() is zero, dont call this function with an empty list!");
-        if(octants.size() == 0) return octants;
+        if(input_view.size() == 0) return input_view;
 
         // to remove warnings due to KOKKOS_LAMBDA
         const auto local_morton_helper = this->morton_helper;
@@ -48,7 +48,7 @@ namespace ippl {
 
         Kokkos::parallel_scan(
                 "algo8:AddRelevantOctants", input_size - 1, KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                    if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i))) {
+                    if (!(input_view(i+1) == input_view(i)) && !local_morton_helper.is_ancestor(input_view(i+1), input_view(i))) {
                         if (final) {
                             output_view(index) = input_view(i);
                         }
