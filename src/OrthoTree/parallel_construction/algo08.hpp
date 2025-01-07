@@ -38,6 +38,7 @@ namespace ippl {
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 // no branching this way
                 local_count += static_cast<size_t>(
+!(input_view(i+1) == input_view(i)) && 
                     !local_morton_helper.is_ancestor(input_view(i + 1), input_view(i)));
             },
             count);

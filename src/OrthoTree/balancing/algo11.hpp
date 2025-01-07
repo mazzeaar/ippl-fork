@@ -554,7 +554,6 @@ namespace ippl {
 #define LOG_VIEW(x)   ((void)x)
 #define PRINT_VIEW(x) ((void)x)
 #endif
-        PRINT_VIEW(B_view);
 
         // this has to be sequential, else we have to sort C_view at the end
         Kokkos::View<morton_code*> C_view("C_view", 0);
@@ -589,20 +588,14 @@ namespace ippl {
                           // PRINT_VIEW(algo7_view);
                           C_view = concatenateViews(C_view, algo7_view);
                       });
-        PRINT_VIEW(C_view);
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view, max_depth_m);
-        PRINT_VIEW(D_view);
 
         // ripple propagation
         // D_view must be sorted here TODO possible bug
         auto S_view = algo9(D_view);
-        PRINT_VIEW(S_view);
         auto concatenated_S_C = concatenateViews(S_view, C_view);
-        PRINT_VIEW(concatenated_S_C);
         auto F_view = linearise_octants(concatenated_S_C);
-        PRINT_VIEW(F_view);
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
-        PRINT_VIEW(G_view);
 
         /**
          * overlapping_octants is a flat view of the octants we send.
@@ -610,8 +603,6 @@ namespace ippl {
          */
         auto [overlapping_octants, overlap_offsets] =
             inter_proc_boundaries(morton_helper, G_view, B_view);
-        PRINT_VIEW(overlap_offsets);
-        PRINT_VIEW(overlapping_octants);
 
         /**
          * Main idea:
@@ -701,7 +692,6 @@ namespace ippl {
             Kokkos::resize(T_view, total_recv_size);
         }
         Comm->barrier();
-        PRINT_VIEW(T_view);
 
         /**
          * Each rank should now have all the octants it needs
@@ -711,8 +701,6 @@ namespace ippl {
         // working on K_view
         auto [K_overlapping_octants, K_overlap_offsets] =
             K_inter_proc_boundaries(morton_helper, G_view, T_view, overlapping_octants, overlap_offsets, recv_sizes);
-        PRINT_VIEW(K_overlap_offsets);
-        PRINT_VIEW(K_overlapping_octants);
 
         /**
          * Main idea:
@@ -803,17 +791,13 @@ namespace ippl {
             Kokkos::resize(K_view, K_total_recv_size);
         }
         // =========================================
-        PRINT_VIEW(K_view);
 
         auto conc_G_T_K = concatenateViews(G_view, T_view , K_view);
-        PRINT_VIEW(conc_G_T_K);
 
         auto H_view = algo9(conc_G_T_K);
-        PRINT_VIEW(H_view);
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         R_view = linearise_octants(R_view);
-        PRINT_VIEW(R_view);
-        //assert(is_balanced(R_view));
+        assert(is_balanced(R_view));
         return R_view;
     }
 

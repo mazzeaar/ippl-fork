@@ -73,22 +73,6 @@ namespace ippl {
 
             auto insert_into_R = [&](morton_code octant_a, Kokkos::View<morton_code*> T_view) {
                 auto complete_subtree_view = algo10(octant_a, T_view);
-                std::string T_str = "T_view={";
-                for (size_t i = 0; i < T_view.size(); i++) {
-                    T_str += std::to_string(T_view(i));
-                    if(i != T_view.size()-1) T_str += ", ";
-                }
-                T_str += "}";
-
-                std::string sub_str = "subtree={";
-                for (size_t i = 0; i < complete_subtree_view.size(); i++) {
-                    sub_str += std::to_string(complete_subtree_view(i));
-                    if(i != complete_subtree_view.size()-1) sub_str += ", ";
-                }
-                sub_str += "}";
-
-                std::string err_str = "Rank " + std::to_string(Comm->rank()) + ", level " + std::to_string(depth) + ": " + T_str + "\n" + sub_str + "\n";
-                std::cerr << err_str;
 
                 const size_t additional_octants = complete_subtree_view.extent(0);
                 size_t remaining_space          = R_view.extent(0) - R_index;
@@ -104,19 +88,6 @@ namespace ippl {
                     R_index++;
                 }
             };
-
-            std::string out = "Rank " + std::to_string(Comm->rank()) + ", level " + std::to_string(depth)+ ": T={";
-            for (size_t i = 0; i < T.size(); i++) {
-                out += "{";
-                for (size_t j = 0; j < T(i).size(); j++) {
-                    out += std::to_string(T(i)[j]);
-                    if(j != T(i).size()-1) out += ", ";
-                }
-                out += "}";
-                if(i != T.extent(0) -1) out += ", ";
-            }
-            out += "}\n";
-            std::cerr << out;
 
             for (size_t i = 0; i < W.extent(0); i++) {
                 if (T(i).size() != 0) {
@@ -139,13 +110,6 @@ namespace ippl {
             R_index = 0;
             Kokkos::resize(W, R_view.extent(0));
             Kokkos::deep_copy(W, R_view);
-            std::string R_out = "Rank " + std::to_string(Comm->rank()) + ", level " + std::to_string(depth)+ ": R={";
-            for (size_t i = 0; i < R_view.size(); i++) {
-                R_out += std::to_string(R_view(i));
-                if(i != R_view.size()-1) R_out += ", ";
-            }
-            R_out += "}\n";
-            std::cerr << R_out;
         }
 
         return W;
