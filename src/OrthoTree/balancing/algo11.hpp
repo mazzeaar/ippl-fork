@@ -46,7 +46,7 @@ namespace ippl {
      * implemented to return views
      */
     Kokkos::View<morton_code*> get_neighbour_view(const auto& morton_helper,
-                                                  const morton_code octant) {
+                                                  const morton_code octant, const size_t max_depth) {
         /**
          * this 'vector_t' is on purpose, we will get
          * compilation errors when we change the
@@ -57,11 +57,20 @@ namespace ippl {
          */
         vector_t<morton_code> neighbour_vec =
             morton_helper.get_neighbors(octant, morton_helper.get_depth(octant));
+        Kokkos::View<morton_code*> neighbour_view("neighbour_view", 0);
+        for(morton_code neighbour: neighbour_vec){
+            vector_t<morton_code> children;
+            if(morton_helper.get_depth(neighbour) < max_depth){
+                children = morton_helper.get_children(neighbour);
+            }
+            children.push_back(neighbour);
+            const size_t offset = neighbour_view.size();
+            Kokkos::resize(neighbour_view, offset + children.size());
+            Kokkos::parallel_for(
+                "CopyStdVectorToKokkosView", children.size(),
+                KOKKOS_LAMBDA(const size_t i) { neighbour_view(offset + i) = children[i]; });
 
-        Kokkos::View<morton_code*> neighbour_view("neighbour_view", neighbour_vec.size());
-        Kokkos::parallel_for(
-            "CopyStdVectorToKokkosView", neighbour_vec.size(),
-            KOKKOS_LAMBDA(const size_t i) { neighbour_view(i) = neighbour_vec[i]; });
+        }
 
         return neighbour_view;
     }
@@ -179,10 +188,11 @@ namespace ippl {
 
     Kokkos::View<morton_code*> initialise_D_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
-                                                 Kokkos::View<morton_code*> C_view) {
+                                                 Kokkos::View<morton_code*> C_view,
+                                                 const size_t max_depth) {
         auto should_insert = KOKKOS_LAMBDA(morton_code check_octant) {
             const Kokkos::View<morton_code*> neighbour_view =
-                get_neighbour_view(morton_helper, check_octant);
+                get_neighbour_view(morton_helper, check_octant, max_depth);
 
             for (size_t i = 0; i < neighbour_view.size(); ++i) {
                 const morton_code neighbour_oct = neighbour_view[i];
@@ -211,10 +221,11 @@ namespace ippl {
 
     Kokkos::View<morton_code*> initialise_G_view(const auto& morton_helper,
                                                  Kokkos::View<morton_code*> B_view,
-                                                 Kokkos::View<morton_code*> F_view) {
+                                                 Kokkos::View<morton_code*> F_view,
+                                                 const size_t max_depth) {
         auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_check) {
             Kokkos::View<morton_code*> neighbour_view =
-                get_neighbour_view(morton_helper, octant_to_check);
+                get_neighbour_view(morton_helper, octant_to_check, max_depth);
 
             for (size_t i = 0; i < neighbour_view.size(); ++i) {
                 const morton_code neighbour_oct = neighbour_view[i];
@@ -579,7 +590,7 @@ namespace ippl {
                           C_view = concatenateViews(C_view, algo7_view);
                       });
         PRINT_VIEW(C_view);
-        Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view);
+        Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view, max_depth_m);
         PRINT_VIEW(D_view);
 
         // ripple propagation
@@ -590,7 +601,7 @@ namespace ippl {
         PRINT_VIEW(concatenated_S_C);
         auto F_view = linearise_octants(concatenated_S_C);
         PRINT_VIEW(F_view);
-        auto G_view = initialise_G_view(this->morton_helper, B_view, F_view);
+        auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
         PRINT_VIEW(G_view);
 
         /**
