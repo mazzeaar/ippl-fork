@@ -10,7 +10,7 @@ namespace ippl {
     */
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::algo9(
-        Kokkos::View<morton_code*> sorted_incomplete_tree_L);
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::algo9(
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> sorted_incomplete_tree_L);
 
 }  // namespace ippl

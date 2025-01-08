@@ -6,7 +6,7 @@ TODO:
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::build_tree(particle_t const& particles) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::build_tree(particle_t const& particles) {
         START_FUNC;
 
         IpplTimings::TimerRef aidListTimer = IpplTimings::getTimer("aid_list");
@@ -31,7 +31,7 @@ namespace ippl {
 
         IpplTimings::startTimer(buildTreeTimer);
 
-        Kokkos::View<morton_code*> tree_view = build_tree_from_octants(octants);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> tree_view = build_tree_from_octants(octants);
 
         IpplTimings::stopTimer(buildTreeTimer);
 
@@ -42,7 +42,7 @@ namespace ippl {
 
     template <size_t Dim>
     void OrthoTree<Dim>::build_tree_from_octant(morton_code root_octant,
-        Kokkos::View<morton_code*>& tree_view) {
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>& tree_view) {
         auto guesstimate_subtree_size = [this](morton_code octant) {
             // we can probably do some really smart guessing here
 
@@ -125,12 +125,12 @@ namespace ippl {
 
     template <size_t Dim>
     template <typename Container>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::build_tree_from_octants(const Container& octants) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::build_tree_from_octants(const Container& octants) {
         IpplTimings::TimerRef buildTreeFromOctantsTimer =
             IpplTimings::getTimer("build_tree_from_octants");
         IpplTimings::startTimer(buildTreeFromOctantsTimer);
 
-        Kokkos::View<morton_code*> finished_tree;
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> finished_tree;
 
         for (auto it = octants.data(); it != (octants.data() + octants.size()); ++it) {
             build_tree_from_octant(*it, finished_tree);

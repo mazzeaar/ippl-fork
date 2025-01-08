@@ -14,6 +14,7 @@
 #include "helpers/Config.h"
 #include "helpers/MortonHelper.h"
 
+
 namespace ippl {
 
     // this is defined outside of Types.h on purpose, as this is likely to change in the finalised
@@ -84,7 +85,7 @@ namespace ippl {
          *
          * @param particles An 'object of arrays' of particles (google it)
          */
-        Kokkos::View<morton_code*> build_tree_naive(particle_t const& particles);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> build_tree_naive(particle_t const& particles);
 
 #pragma region paralell construction
         /**
@@ -96,7 +97,7 @@ namespace ippl {
          * @param particles
          * @return Kokkos::vector<morton_code>
          */
-        Kokkos::View<morton_code*> build_tree(particle_t const& particles);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> build_tree(particle_t const& particles);
 
         /**
          * ALGO 2
@@ -107,14 +108,14 @@ namespace ippl {
          *
          * @return list of morton codes of minimal linear octree between the two octants
          **/
-        Kokkos::View<morton_code*> complete_region(morton_code code_a, morton_code code_b);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> complete_region(morton_code code_a, morton_code code_b);
 
         /**
          * ALGO 3
          *
          * @brief Implements the logic part of algorithm 3.
          */
-        Kokkos::View<morton_code*> complete_tree(Kokkos::View<morton_code*> tree);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> complete_tree(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> tree);
 
         /**
          * ALGO 4
@@ -125,7 +126,7 @@ namespace ippl {
          *
          * @return block partitioned octree, and unpartitioned_tree is re-distributed
          **/
-        Kokkos::View<morton_code*> block_partition(morton_code min_octant, morton_code max_octant);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> block_partition(morton_code min_octant, morton_code max_octant);
 
         /**
          * ALGO 5
@@ -133,8 +134,8 @@ namespace ippl {
          * @brief This function partitions the workload of building the tree across
          * the available mpi ranks.
          */
-        Kokkos::View<morton_code*> partition(Kokkos::View<morton_code*> octants,
-                                             Kokkos::View<size_t*> weights);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants,
+                                             Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> weights);
 
         /**
          * ALGO 5
@@ -142,7 +143,7 @@ namespace ippl {
          * @brief Wrapper for partition for when it is called without weights, will call partition
          * with all weights set to 1
          */
-        Kokkos::View<morton_code*> partition(Kokkos::View<morton_code*> octants);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants);
 
         /**
          * ALGO 8
@@ -152,23 +153,23 @@ namespace ippl {
          * @return list of linearised octants - sorted
          * @warning THIS FUNCTION ASSUMES THAT THE OCTANTS ARE SORTED
          */
-        Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> linearise_octants(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> const& octants);
 
 #pragma endregion  // paralell construction
 
 #pragma region balancing
 
-        Kokkos::View<morton_code*> algo6(morton_code octant_N, morton_code descendant_L);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> algo6(morton_code octant_N, morton_code descendant_L);
 
-        Kokkos::View<morton_code*> algo7(morton_code octant_N,
-                                         Kokkos::View<morton_code*> partial_descendants_L);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> algo7(morton_code octant_N,
+                                         Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> partial_descendants_L);
 
-        Kokkos::View<morton_code*> algo9(Kokkos::View<morton_code*> sorted_incomplete_tree_L);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> algo9(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> sorted_incomplete_tree_L);
 
-        Kokkos::View<morton_code*> algo10(morton_code octant_N,
-                                          Kokkos::View<morton_code*> partial_descendants_L);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> algo10(morton_code octant_N,
+                                          Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> partial_descendants_L);
 
-        Kokkos::View<morton_code*> algo11(Kokkos::View<morton_code*> distributed_complete_tree_L);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> algo11(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> distributed_complete_tree_L);
 
 #pragma endregion  // balancing
 
@@ -196,18 +197,18 @@ namespace ippl {
          * Templated for now to make it work with Kokkos::View and Kokkos::vectors
          */
         template <typename Container>
-        Kokkos::View<morton_code*> build_tree_from_octants(const Container& octants);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> build_tree_from_octants(const Container& octants);
 
         /**
          * @brief Constructs an OrthoTree in the given Octant. It will automatically resize the view
          * to the needed size and apply 'shrink_to_fit' after finishing.
          */
-        void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
+        void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>& tree_view);
 
     public:
 #pragma region print_helpers
 
-        void print_stats(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
+        void print_stats(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>& tree_view, const auto& particles) {
             if (!enable_print_stats) {
                 return;
             }

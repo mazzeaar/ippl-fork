@@ -7,8 +7,8 @@ TODO:
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::linearise_octants(
-        const Kokkos::View<morton_code*>& input_view) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::linearise_octants(
+        const Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>& input_view) {
         IpplTimings::TimerRef lineariseOctantsTimer = IpplTimings::getTimer("linearise_octants");
         IpplTimings::startTimer(lineariseOctantsTimer);
 
@@ -42,7 +42,7 @@ namespace ippl {
 
         // last element will always be inserted, hence the 'count + 1'
         const size_t output_size = count + 1;
-        Kokkos::View<morton_code*> output_view("algo8::linearised_view", output_size);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> output_view("algo8::linearised_view", output_size);
 
         Kokkos::parallel_scan(
                 "algo8:AddRelevantOctants", input_size - 1, KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {

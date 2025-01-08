@@ -3,7 +3,6 @@
 
 #include <Kokkos_Vector.hpp>
 #include <span>
-
 #include "OrthoTree/helpers/BoundingBox.h"
 #include "OrthoTree/helpers/MortonHelper.h"
 
@@ -14,6 +13,7 @@ namespace ippl {
         const size_t world_size;
         const size_t max_depth;
         const Morton<Dim> morton_helper;
+        using AidListDefaultExecutionSpace = typename Kokkos::DefaultExecutionSpace;
 
         Inform logger;
 
@@ -22,10 +22,9 @@ namespace ippl {
          * They will only be accessed through the helper functions below, so if we decide to change
          * implementation we (should) only have to change those and everything sould still work.
          */
-        Kokkos::DualView<morton_code*> octants;
-        Kokkos::DualView<size_t*> particle_ids;
-
-        Kokkos::DualView<morton_code*> bucket_borders;
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants;
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> particle_ids;
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> bucket_borders;
 
     public:
         AidList(size_t max_depth);
@@ -79,7 +78,7 @@ namespace ippl {
          * '.size()'
          */
         template <typename Container>
-        void getNumParticlesSendBuff(const Container& octants, Kokkos::View<Kokkos::View<size_t*>*>& send_buffs, Kokkos::View<size_t*>& sizes);
+        void getNumParticlesSendBuff(const Container& octants, Kokkos::View<Kokkos::View<size_t*,Kokkos::HostSpace::memory_space>*>& send_buffs, Kokkos::View<size_t*,Kokkos::HostSpace::memory_space>& sizes);
 
         /**
          * @brief Calculates the number of particles for each octant.
@@ -90,7 +89,7 @@ namespace ippl {
          * and '.size()'
          */
         template <typename Container>
-        Kokkos::View<size_t*> getNumParticlesInOctantsParallel(const Container& container);
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> getNumParticlesInOctantsParallel(const Container& container);
 
         /**
          * @brief Returns the highest index s.t. octants(index-1) <= octant <= octants(index)

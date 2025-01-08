@@ -12,24 +12,24 @@ namespace ippl {
 
     // entry with weights
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants,
-                                                          Kokkos::View<morton_code*> weights);
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants,
+                                                          Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> weights);
 
     // entry without weights
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants);
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants);
 }  // namespace ippl
 */
 
 namespace ippl {
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants,
-                                                         Kokkos::View<size_t*> weights) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants,
+                                                         Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> weights) {
         IpplTimings::TimerRef partitionTimer = IpplTimings::getTimer("partition");
         IpplTimings::startTimer(partitionTimer);
 
-        Kokkos::View<morton_code*> prefix_sum("prefix_sum", octants.size());
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> prefix_sum("prefix_sum", octants.size());
 
         // the global weight up to right after this rank
         size_t global_total;
@@ -74,7 +74,7 @@ namespace ippl {
 
         std::vector<mpi::Request> request;
         request.reserve(2 * world_size);
-        Kokkos::View<size_t*> sizes("algo5::sizes", world_size);
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> sizes("algo5::sizes", world_size);
         for (unsigned rank_iter = 0; rank_iter < world_size; rank_iter++) {
             // this will take care of the remainder
             size_t offset = rank_iter < k ? rank_iter : k;
@@ -120,7 +120,7 @@ namespace ippl {
             }
         }
 
-        Kokkos::View<size_t*> received_sizes("algo5::received_sizes", world_size);
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> received_sizes("algo5::received_sizes", world_size);
         // first we receive all sizes. This let's us prepare a Kokkos::view
         // of the right size to receive the octants
         for (unsigned rank_iter = 0; rank_iter < world_size; rank_iter++) {
@@ -136,7 +136,7 @@ namespace ippl {
 
         // compute the prefix sum of the received sizes
         // This will allow easy computation of starting indices
-        Kokkos::View<size_t*> received_prefix_sum("algo5::received_prefix_sum", world_size);
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> received_prefix_sum("algo5::received_prefix_sum", world_size);
         Kokkos::parallel_scan(
             "algo5::received_prefix_sum", world_size,
             KOKKOS_LAMBDA(const size_t i, size_t& sum, const bool final) {
@@ -147,7 +147,7 @@ namespace ippl {
             });
 
         // receive buffer that is big enough to fit the sum of all received sizes
-        Kokkos::View<morton_code*> partitioned_octants("algo5::partitioned_octants",
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> partitioned_octants("algo5::partitioned_octants",
                                                        received_prefix_sum(world_size - 1));
 
         for (unsigned rank_iter = 0; rank_iter < world_size; rank_iter++) {
@@ -188,8 +188,8 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::partition(Kokkos::View<morton_code*> octants) {
-        Kokkos::View<size_t*> weights_view("algo5::weights_view", octants.size());
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::partition(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants) {
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> weights_view("algo5::weights_view", octants.size());
         Kokkos::deep_copy(weights_view, size_t(1));
         return partition(octants, weights_view);
     }

@@ -6,12 +6,12 @@
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::block_partition(morton_code min_octant,
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::block_partition(morton_code min_octant,
                                                                morton_code max_octant) {
         IpplTimings::TimerRef blockPartitionTimer = IpplTimings::getTimer("block_partition");
         IpplTimings::startTimer(blockPartitionTimer);
 
-        Kokkos::View<morton_code*> T = complete_region(min_octant, max_octant);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> T = complete_region(min_octant, max_octant);
 
         // find the lowest level (smallest depth)
         size_t lowest_level;
@@ -36,7 +36,7 @@ namespace ippl {
             },
             C_size);
 
-        Kokkos::View<morton_code*> C("algo4::C_view", C_size);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> C("algo4::C_view", C_size);
 
         // populate C_view
         Kokkos::parallel_scan("algo4::PopulateC",
@@ -49,10 +49,10 @@ namespace ippl {
                 }
             });
 
-        Kokkos::View<morton_code*> G = complete_tree(C);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> G = complete_tree(C);
 
-        Kokkos::View<size_t*> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
-        Kokkos::View<morton_code*> octants = partition(G, weights);
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> octants = partition(G, weights);
 
         morton_code min_step   = morton_helper.get_step_size(max_depth_m);
         morton_code max_parent = *(octants.data() + octants.size() - 1);

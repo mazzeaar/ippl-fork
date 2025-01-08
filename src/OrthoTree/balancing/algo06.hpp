@@ -10,6 +10,6 @@ namespace ippl {
     */
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::algo6(morton_code octant_N,
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::algo6(morton_code octant_N,
                                                      morton_code descendant_L);
 }  // namespace ippl

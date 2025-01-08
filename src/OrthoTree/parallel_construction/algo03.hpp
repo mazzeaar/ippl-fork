@@ -9,13 +9,13 @@ TODO:
 
 namespace ippl {
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*>& octants);
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::complete_tree(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>& octants);
 }  // namespace ippl
 */
 
 namespace ippl {
 
-    Kokkos::View<morton_code*> remove_duplicates(Kokkos::View<morton_code*> input_view) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> remove_duplicates(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> input_view) {
         const size_t input_size = input_view.extent(0);
 
         size_t unique_count = 0;
@@ -27,10 +27,10 @@ namespace ippl {
             unique_count);
 
         const size_t output_size = unique_count + 1;
-        Kokkos::View<morton_code*> output_view("algo3::deduplicated_view", output_size);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> output_view("algo3::deduplicated_view", output_size);
 
         /*
-        Kokkos::View<size_t> index("algo3::index");
+        Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> index("algo3::index");
         Kokkos::deep_copy(index, size_t(0));
         Kokkos::parallel_for(
             "algo3::PopulateUniqueElements", input_size - 1, KOKKOS_LAMBDA(const size_t i) {
@@ -61,8 +61,8 @@ int a;
     }
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::complete_tree(
-        Kokkos::View<morton_code*> input_octants) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::complete_tree(
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> input_octants) {
         IpplTimings::TimerRef completeTreeTimer = IpplTimings::getTimer("complete_tree");
         IpplTimings::startTimer(completeTreeTimer);
 
@@ -99,10 +99,10 @@ int a;
         }
 
         const size_t R_base_size = 100;
-        Kokkos::View<morton_code*> R_view("algo3::R_view", R_base_size);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> R_view("algo3::R_view", R_base_size);
 
         size_t R_index     = 0;
-        auto insert_into_R = KOKKOS_LAMBDA(Kokkos::View<morton_code*> R_view, size_t R_index,
+        auto insert_into_R = KOKKOS_LAMBDA(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> R_view, size_t R_index,
                                            morton_code octant_a, morton_code octant_b)
                                  ->size_t {
             const auto complete_region        = this->complete_region(octant_a, octant_b);
@@ -130,6 +130,7 @@ int a;
 
             return complete_region_size + 1;
         };
+
 
         if (world_rank == 0) {
             R_index += insert_into_R(R_view, R_index, push_front_buff, partitioned_octants(0));

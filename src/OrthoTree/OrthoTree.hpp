@@ -39,9 +39,9 @@ namespace ippl {
     LOG << "STARTING" << endl
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> OrthoTree<Dim>::build_tree_naive(particle_t const& particles) {
+    Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::build_tree_naive(particle_t const& particles) {
         // this needs to be initialized before constructing the tree
-        Kokkos::View<morton_code*> empty_dummy;
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> empty_dummy;
         if (world_rank != 0) {
             return empty_dummy;
         }
@@ -56,7 +56,7 @@ namespace ippl {
         // parallel version never contains the root node
         morton_code root_octant(0);
         auto octants = morton_helper.get_children(root_octant);
-        Kokkos::View<morton_code*> finished_tree = build_tree_from_octants(octants);
+        Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> finished_tree = build_tree_from_octants(octants);
 
         particles_to_file(particles);
         octants_to_file(finished_tree);
