@@ -180,7 +180,7 @@ namespace ippl {
 
         // the number of descendants at a given relative level are given by 
         // 2^(Dim * (level difference)) as each level multiplies a factor 2^Dim
-        const morton_code num_descendants = (1 << (Dim * (level - current_depth)));
+        const morton_code num_descendants = (1ULL << (Dim * (level - current_depth)));
 
         // the last descendant is num_descendants - 1 morton code steps
         // away from the first descendant

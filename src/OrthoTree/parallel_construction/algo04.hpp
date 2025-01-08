@@ -11,13 +11,13 @@ namespace ippl {
         IpplTimings::TimerRef blockPartitionTimer = IpplTimings::getTimer("block_partition");
         IpplTimings::startTimer(blockPartitionTimer);
 
-        auto local_morton_helper = morton_helper;
+        auto local_morton_helper     = morton_helper;
         Kokkos::View<morton_code*> T = complete_region(min_octant, max_octant);
 
         // find the lowest level (smallest depth)
-        size_t lowest_level;
-        Kokkos::parallel_reduce("algo4::FindLowestLevel",
-            T.size(),
+        size_t lowest_level = max_depth_m;
+        Kokkos::parallel_reduce(
+            "algo4::FindLowestLevel", T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& min_depth) {
                 size_t depth = local_morton_helper.get_depth(T(i));
                 if (depth < min_depth) {
@@ -28,8 +28,8 @@ namespace ippl {
 
         // count the number of elements at the lowest level
         size_t C_size;
-        Kokkos::parallel_reduce("algo4::CountAtLowestLevel",
-            T.size(),
+        Kokkos::parallel_reduce(
+            "algo4::CountAtLowestLevel", T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& count) {
                 if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     count++;
@@ -40,8 +40,8 @@ namespace ippl {
         Kokkos::View<morton_code*> C("algo4::C_view", C_size);
 
         // populate C_view
-        Kokkos::parallel_scan("algo4::PopulateC",
-            T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
+        Kokkos::parallel_scan(
+            "algo4::PopulateC", T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
                 if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     if (final) {
                         C(index) = T(i);
@@ -50,6 +50,15 @@ namespace ippl {
                 }
             });
 
+        if (C_size == 0) {
+            Kokkos::resize(C, 2);
+            C(0) = min_octant;
+            C(1) = max_octant;
+        }
+
+        if (aid_list_m.size() == 0) {
+            throw std::runtime_error("No particles on rank algo4");
+        }
         Kokkos::View<morton_code*> G = complete_tree(C);
 
         Kokkos::View<size_t*> weights      = this->aid_list_m.getNumParticlesInOctantsParallel(G);
@@ -66,7 +75,7 @@ namespace ippl {
         IpplTimings::startTimer(innitfromoctants);
 
         this->aid_list_m.innitFromOctants(new_min_octant, new_max_octant);
-
+        n_particles = this->aid_list_m.size();
         IpplTimings::stopTimer(innitfromoctants);
 
         IpplTimings::stopTimer(blockPartitionTimer);

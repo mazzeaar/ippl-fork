@@ -58,6 +58,7 @@ namespace ippl {
         auto octants = morton_helper.get_children(root_octant);
         Kokkos::View<morton_code*> finished_tree = build_tree_from_octants(octants);
 
+        print_stats_seq(finished_tree, particles);
         particles_to_file(particles);
         octants_to_file(finished_tree);
 

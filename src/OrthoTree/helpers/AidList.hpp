@@ -1,9 +1,13 @@
 #include <mpi.h>
+#include <random>
+#include <utility>
 
 #include "AidList.h"
 #include "Communicate/Window.h"
 #include "Kokkos_Sort.hpp"
 #include "Kokkos_UnorderedMap.hpp"
+
+constexpr size_t BORDER_MAX_ITER = 10000;
 
 namespace ippl {
     template <size_t Dim>
@@ -17,16 +21,13 @@ namespace ippl {
         logger.setPrintNode(INFORM_ALL_NODES);
         bucket_borders = Kokkos::View<morton_code*>("bucket_borders", world_size - 1);
 
-        // logger << "Initialized AidList" << endl;
     }
 
     template <size_t Dim>
     template <typename PLayout>
     void AidList<Dim>::initialize(const BoundingBox<Dim>& root_bounds, PLayout const& particles) {
-        logger << "Initializing AidList" << endl;
         if (world_rank == 0) {
             initialize_from_rank(max_depth, root_bounds, particles);
-            logger << "initial Aid list is initialized with size: " << octants.size() << endl;
             distribute_buckets();
         } else {
             mpi::Status stat;
@@ -46,7 +47,6 @@ namespace ippl {
             particle_ids = Kokkos::View<size_t*>("aid_list::particle_ids", bucket_size);
 
             // receive the octants and the particle ids
-            logger << "Receiving octants and particle ids on rank " << world_rank << endl;
             if (bucket_size > 0) {
                 Comm->recv(octants.data(), bucket_size, 0, 0, stat);
                 Comm->recv(particle_ids.data(), bucket_size, 0, 1, stat);
@@ -57,12 +57,10 @@ namespace ippl {
         IpplTimings::startTimer(sort_aidlist);
         sort_local_aidlist();
         IpplTimings::stopTimer(sort_aidlist);
-        logger << "AidList initialized with size: " << octants.size() << endl;
     }
 
     template <size_t Dim>
     void AidList<Dim>::distribute_buckets() {
-        logger << "Distributing buckets" << endl;
 
         const size_t n_particles = octants.size();
 
@@ -96,23 +94,54 @@ namespace ippl {
          * Calculate the bucket borders
          */
         {
-            const morton_code max_octant = morton_helper.get_deepest_last_descendant(0);
-            const size_t avg_bucket_size = max_octant / world_size;
-            const size_t k               = max_octant % world_size;
+            std::mt19937_64 eng(0);
+            std::uniform_int_distribution<size_t> unif(0, n_particles-1);
+            
 
-            // distribute ranges of possible octants equally among the ranks
-            // the first k ranks get a range one larger than the rest
-            // !!! These might not be valid morton_codes but it doesn't matter since
-            // they are only used to distribute the octants
-            for (size_t i = 1; i < world_size; ++i) {
-                const size_t offset = i < k ? i : k;
+            // sample sort routine selecting buckets based on random samples 
+            // from the octants
+            for(size_t i = 0; i < world_size; ++i) {
 
-                bucket_borders(i - 1) = i * avg_bucket_size + offset;
-                logger << "actual Bucket border " << i << ": " << bucket_borders(i) << endl;
+                bool is_unique = true;
+                size_t index = unif(eng);
+                size_t count = 0;
+                do{
+                    index = unif(eng);
+                    is_unique = true;
+                    for(size_t j = 0; j < i; ++j) {
+                        if(bucket_borders(j) == octants(index)) {
+                            is_unique = false;
+                            break;
+                        }
+                    }
+                }while(!is_unique && ++count < BORDER_MAX_ITER);
+                if (i < world_size - 1) {
+                    bucket_borders(i) = octants(index); 
+                } else {
+                  // We take one more sample than necessary to ensure that the first bucket 
+                  // contains some particles
+                  size_t min_index = 0;
+                  for (unsigned j = 0; j < world_size-1; j++) {
+                    if (bucket_borders(j) < bucket_borders(min_index)) {
+                      min_index = j;
+                    }
+                  }
+                  if (octants(index) > bucket_borders(min_index)) {
+                    bucket_borders(min_index) = octants(index);
+                  } 
+                }
+                if (count >= BORDER_MAX_ITER) {
+                    throw std::runtime_error("Could not find unique bucket border");
+                }
             }
-
+            
+            // sort the bucket borders
             std::sort(bucket_borders.data(), bucket_borders.data() + bucket_borders.extent(0));
+
+
+            // broadcast the bucket borders
             Comm->broadcast(bucket_borders.data(), bucket_borders.size(), 0);
+
         }
 
         IpplTimings::TimerRef bucket_distribution =
@@ -171,7 +200,10 @@ namespace ippl {
         {
             if (world_rank == 0) {
                 for (size_t i = 0; i < world_size; ++i) {
-                    logger << "Bucket " << i << " has size: " << bucket_sizes(i) << endl;
+                    if (bucket_sizes(i) == 0) {
+
+                       throw std::runtime_error("Bucket size is 0");
+                    }
                 }
             }
         }
@@ -368,14 +400,11 @@ namespace ippl {
             Kokkos::RangePolicy<>(0, n_particles), KOKKOS_LAMBDA(const size_t i) {
                 // Calculate grid coordinate
                 const grid_coordinate grid_coord = static_cast<grid_coordinate>(
-                    (particles.R(i) - root_bounds.get_min()) * (grid_size - 1) / root_bounds_size);
+                    (particles.R(i) - root_bounds.get_min()) * grid_size / root_bounds_size);
 
                 local_octants(i) = local_morton_helper.encode(grid_coord, max_depth);
                 local_pids(i)    = i;
             });
-
-        // log size of aid list
-        logger << "Size of aid list: " << octants.size() << endl;
     }
 
     template <size_t Dim>
@@ -461,7 +490,7 @@ namespace ippl {
             morton_code lower_bound_octant = 0;
             morton_code upper_bound_octant = 0;
             for (size_t i = 0; i < world_size; ++i) {
-                upper_bound_octant = dld_root;
+                upper_bound_octant = dld_root + 1;
                 if (i < world_size - 1) {
                     upper_bound_octant = bucket_borders(i);
                 }
@@ -653,11 +682,6 @@ namespace ippl {
             // broadcast the updated bucket borders
             Comm->broadcast(bucket_borders.data(), bucket_borders.size(), 0);
 
-            if (world_rank == 0) {
-                for (size_t i = 0; i < bucket_borders.size(); ++i) {
-                    logger << "Bucket border " << i << ": " << bucket_borders(i) << endl;
-                }
-            }
         }
     }
 
@@ -673,6 +697,8 @@ namespace ippl {
         morton_code max_octant =
             morton_helper.get_deepest_last_descendant(octant_container[octant_container.size() - 1])
             + min_step;
+
+        
         innitFromOctants(min_octant, max_octant);
 
         Kokkos::View<size_t*> result("result", octant_container.size());

@@ -78,6 +78,8 @@ namespace ippl {
             aid_list_m.setLogLevel(level);
         }
 
+        size_t getMaxDepth() const { return max_depth_m; }
+
         /**
          * @brief This is the most basic way to build a tree. Its inefficien, but it (should) be
          * correct. Can be used to compare against parallel implementations later on.
@@ -258,6 +260,24 @@ namespace ippl {
                           << "% of starting value lol)" << std::endl
                           << std::string(col_width * 3, '-') << std::endl;
             }
+        }
+
+        void print_stats_seq(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
+            size_t total_particles = 0;
+            for (size_t i = 0; i < tree_view.size(); ++i) {
+                auto num_particles = this->aid_list_m.getNumParticlesInOctant(tree_view[i]);
+                total_particles += num_particles;
+            }
+            const size_t col_width = 15;
+
+            auto printer = [col_width](const auto& rank, const auto& tree_size,
+                                       const auto& num_particles) {
+                std::cerr << std::left << std::setw(col_width) << rank << std::left
+                          << std::setw(col_width) << tree_size << std::left << std::setw(col_width)
+                          << num_particles << std::endl;
+            };
+            printer("rank", "octs_now", "particles");
+            printer(world_rank, tree_view.size(), total_particles);
         }
 
         std::ostream& print_octant(std::ostream& os, morton_code octant) {

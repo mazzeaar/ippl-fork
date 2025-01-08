@@ -85,7 +85,9 @@ namespace ippl {
             // get the iterator to the first element that is greater than min_prefix
             auto start =
                 std::upper_bound(prefix_sum.data(), prefix_sum.data() + octants.size(), min_prefix);
+            if(world_rank == 0 && rank_iter == 0) start = prefix_sum.data();
             size_t start_idx = start - prefix_sum.data();
+
             // if rank < k we allocate a bit more space for weight to adjust
             // for the remainder
             if (rank_iter < k)
