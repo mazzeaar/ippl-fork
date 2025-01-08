@@ -437,8 +437,15 @@ namespace ippl {
         IpplTimings::TimerRef algo11Timer = IpplTimings::getTimer("algo11");
         IpplTimings::startTimer(algo11Timer);
 
-        Kokkos::View<morton_code*> B_view = L_view;  // algo4_11(L_view);
+        IpplTimings::TimerRef algo11_B_view_Timer = IpplTimings::getTimer("algo11_B_view");
+        IpplTimings::startTimer(algo11_B_view_Timer);
 
+        Kokkos::View<morton_code*> B_view = L_view; // algo4_11(L_view);
+
+        IpplTimings::stopTimer(algo11_B_view_Timer);
+
+        IpplTimings::TimerRef algo11_C_view_Timer = IpplTimings::getTimer("algo11_C_view");
+        IpplTimings::startTimer(algo11_C_view_Timer);
         // this has to be sequential, else we have to sort C_view at the end
         Kokkos::View<morton_code*> C_view("C_view", 0);
         std::for_each(B_view.data(), B_view.data() + B_view.size(),
@@ -470,15 +477,44 @@ namespace ippl {
                           auto algo7_view = algo7(octant_B, Temp_view);
                           C_view = concatenateViews(C_view, algo7_view);
                       });
+
+        IpplTimings::stopTimer(algo11_C_view_Timer);
+
+        IpplTimings::TimerRef algo11_D_view_Timer = IpplTimings::getTimer("algo11_D_view");
+        IpplTimings::startTimer(algo11_D_view_Timer);
+
         Kokkos::View<morton_code*> D_view = initialise_D_view(this->morton_helper, B_view, C_view, max_depth_m);
+
+        IpplTimings::stopTimer(algo11_D_view_Timer);
+
+        IpplTimings::TimerRef algo11_S_view_Timer = IpplTimings::getTimer("algo11_S_view");
+        IpplTimings::startTimer(algo11_S_view_Timer);
 
         // ripple propagation
         auto S_view = algo9(D_view);
+
+        IpplTimings::stopTimer(algo11_S_view_Timer);
+
+        IpplTimings::TimerRef algo11_F_view_Timer = IpplTimings::getTimer("algo11_F_view");
+        IpplTimings::startTimer(algo11_F_view_Timer);
+
         auto concatenated_S_C = concatenateViews(S_view, C_view);
         auto F_view = linearise_octants(concatenated_S_C);
+
+        IpplTimings::stopTimer(algo11_S_view_Timer);
+
+        IpplTimings::TimerRef algo11_G_view_Timer = IpplTimings::getTimer("algo11_G_view");
+        IpplTimings::startTimer(algo11_G_view_Timer);
+
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
 
+        IpplTimings::stopTimer(algo11_G_view_Timer);
+
         std::cout << std::to_string(Comm->rank()) + ": Starting with T_view\n";
+
+        IpplTimings::TimerRef algo11_T_view_Timer = IpplTimings::getTimer("algo11_T_view");
+        IpplTimings::startTimer(algo11_T_view_Timer);
+
         // T_view
         auto [overlapping_octants, overlap_offsets] =
             inter_proc_boundaries(morton_helper, G_view, B_view);
@@ -572,12 +608,16 @@ namespace ippl {
             }
             Kokkos::resize(T_view, total_recv_size);
         }
-        Comm->barrier();
+
+        IpplTimings::stopTimer(algo11_T_view_Timer);
 
         /**
          * Each rank should now have all the octants it needs
          */
         std::cout << std::to_string(Comm->rank()) + ": Starting with K_view\n";
+
+        IpplTimings::TimerRef algo11_K_view_Timer = IpplTimings::getTimer("algo11_K_view");
+        IpplTimings::startTimer(algo11_K_view_Timer);
 
         // K_view
         auto [K_overlapping_octants, K_overlap_offsets] =
@@ -674,13 +714,27 @@ namespace ippl {
             Kokkos::resize(K_view, K_total_recv_size);
         }
 
+        IpplTimings::stopTimer(algo11_K_view_Timer);
+
+        IpplTimings::TimerRef algo11_H_view_Timer = IpplTimings::getTimer("algo11_H_view");
+        IpplTimings::startTimer(algo11_H_view_Timer);
+
         auto conc_G_T_K = concatenateViews(G_view, concatenateViews(T_view , K_view));
 
         std::cout << std::to_string(Comm->rank()) + ": Starting algo8\n";
         auto H_view = algo9(conc_G_T_K);
+
+        IpplTimings::stopTimer(algo11_H_view_Timer);
+
+        IpplTimings::TimerRef algo11_R_view_Timer = IpplTimings::getTimer("algo11_R_view");
+        IpplTimings::startTimer(algo11_R_view_Timer);
+
         std::cout << std::to_string(Comm->rank()) + ": Initializing R_view\n";
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         R_view = linearise_octants(R_view);
+
+        IpplTimings::stopTimer(algo11_R_view_Timer);
+
         std::cout << std::to_string(Comm->rank()) + ": Done\n";
         assert(is_balanced(R_view));
 
