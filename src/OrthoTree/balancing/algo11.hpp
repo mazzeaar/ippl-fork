@@ -440,6 +440,7 @@ namespace ippl {
         IpplTimings::TimerRef algo11_B_view_Timer = IpplTimings::getTimer("algo11_B_view");
         IpplTimings::startTimer(algo11_B_view_Timer);
 
+        // Kokkos::View<morton_code*> B_view = block_partition(L_view(0), L_view(L_view.size() - 1));
         Kokkos::View<morton_code*> B_view = L_view; // algo4_11(L_view);
 
         IpplTimings::stopTimer(algo11_B_view_Timer);
