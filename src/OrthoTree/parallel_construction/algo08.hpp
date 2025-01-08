@@ -25,18 +25,11 @@ namespace ippl {
 
         const size_t input_size = input_view.size();
 
-<<<<<<< HEAD
-        // TODO
-        //assert(input_size > 0
-        //       && "Octants.size() is zero, dont call this function with an empty list!");
-        if(input_view.size() == 0) return input_view;
-=======
         if (input_view.size() == 0) {
             IpplTimings::stopTimer(lineariseOctantsTimer);
             return Kokkos::View<morton_code*>("algo8::linearised_view", 0);
         }
 
->>>>>>> dphpc_octree
 
         // to remove warnings due to KOKKOS_LAMBDA
         const auto local_morton_helper = this->morton_helper;
