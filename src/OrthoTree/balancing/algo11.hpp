@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <string>
 
 #include "../OrthoTree.h"
 namespace ippl {
@@ -48,6 +49,46 @@ namespace ippl {
     // ================================
 
     /**
+     * @brief removes duplicates from a view
+     */
+    Kokkos::View<morton_code*> removeDuplicates(Kokkos::View<morton_code*> input){
+        Kokkos::View<morton_code*> output("output", input.size());
+        if(input.size() != 0){
+            size_t unique_count = 0;
+            Kokkos::parallel_reduce(
+                "algo3::CountUniqueElements", input.size() - 1,
+                KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
+                    local_count += static_cast<size_t>(input(i) != input(i + 1));
+                },
+                unique_count);
+
+            const size_t out_size = unique_count + 1;
+
+            Kokkos::resize(output, out_size);
+
+            size_t index = 0;
+            Kokkos::parallel_scan(
+                    "algo3::PopulateUniqueElements", input.size() - 1, 
+                    KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
+                        if (input(i) != input(i+1)) {
+                            if (final) {
+                                output(index) = input(i);
+                            }
+                            ++index;
+                        }
+                    });
+
+            std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": out_size: " + std::to_string(out_size) + "\n";
+            std::cerr << log_str;
+            Kokkos::parallel_for(
+                "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
+                    output(output.size() - 1) = input(input.extent(0) - 1);
+                });
+        }
+        return output;
+    }
+
+    /**
      * @brief Takes two sorted views as input and concatenates them into a sorted output view
      */
     Kokkos::View<morton_code*> concatenateViews(Kokkos::View<morton_code*> view_one, Kokkos::View<morton_code*> view_two) {
@@ -55,6 +96,8 @@ namespace ippl {
 
         Kokkos::View<morton_code*> result("concatenated_view", total_size);
         std::merge(view_one.data(), view_one.data() + view_one.extent(0), view_two.data(), view_two.data() + view_two.extent(0), result.data());
+
+        result = removeDuplicates(result);
 
         return result;
     }
