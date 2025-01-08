@@ -11,10 +11,6 @@
 
 namespace ippl {
 
-    // TODO: remove this and make it a kokkos vector or smth
-    template <typename T>
-    using vector_t = std::vector<T>;
-
     /**
      * @brief This class manages morton codes for the octree.
      * The functions are implemented based on page 4 of
