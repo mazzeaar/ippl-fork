@@ -17,6 +17,10 @@ namespace ippl {
     Kokkos::View<morton_code*> remove_duplicates(Kokkos::View<morton_code*> input_view) {
         const size_t input_size = input_view.extent(0);
 
+        if (input_size == 0) {
+            return Kokkos::View<morton_code*>("algo3::deduplicated_view", 0);
+        }
+
         size_t unique_count = 0;
         Kokkos::parallel_reduce(
             "algo3::CountUniqueElements", input_size - 1,
@@ -64,6 +68,11 @@ namespace ippl {
         Kokkos::View<morton_code*> input_octants) {
         IpplTimings::TimerRef completeTreeTimer = IpplTimings::getTimer("complete_tree");
         IpplTimings::startTimer(completeTreeTimer);
+
+        if (input_octants.extent(0) == 0) {
+            logger << "This looks like trouble" << endl;
+            throw std::runtime_error("complete_tree called with empty input");
+        }
 
         auto deduplicated_octants = remove_duplicates(input_octants);
         auto linearised_octants   = linearise_octants(deduplicated_octants);
@@ -131,7 +140,7 @@ namespace ippl {
             return complete_region_size + 1;
         };
 
-        if (world_rank == 0) {
+        if (world_rank == 0 && push_front_buff != partitioned_octants(0)) {
             R_index += insert_into_R(R_view, R_index, push_front_buff, partitioned_octants(0));
         }
 
@@ -139,9 +148,10 @@ namespace ippl {
             R_index +=
                 insert_into_R(R_view, R_index, partitioned_octants(i), partitioned_octants(i + 1));
         }
-
-        R_index += insert_into_R(R_view, R_index, partitioned_octants(partitioned_size - 1),
-                                 push_back_buff);
+        if (world_rank < world_size - 1 || push_back_buff != partitioned_octants(partitioned_size - 1)) {
+            R_index += insert_into_R(R_view, R_index, partitioned_octants(partitioned_size - 1),
+                                     push_back_buff);
+        }
 
         if (world_rank == world_size - 1) {
             Kokkos::resize(R_view, R_index + 1);

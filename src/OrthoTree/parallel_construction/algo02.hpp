@@ -14,23 +14,33 @@ namespace ippl {
         IpplTimings::TimerRef completeRegionTimer = IpplTimings::getTimer("complete_region");
         IpplTimings::startTimer(completeRegionTimer);
        
-        if (code_a >= code_b) {
-            Kokkos::View<morton_code*> min_lin_tree_empty("algo2::complete_region::empty min_lin_tree", 0);
-            return min_lin_tree_empty;
-        }
-        assert(code_a < code_b);
+        assert(code_a <= code_b);
 
         // special case (not specified in the paper): 
         // one code is an ancestor of the other 
         // -> the bigger code is already the region, don't need to complete anything
+        // if the codes are equal and zero this is the special code the aidList 
+        // defines when we have no octants on the rank
         if (morton_helper.is_ancestor(code_a, code_b)
-            || morton_helper.is_ancestor(code_b, code_a)) {
-            Kokkos::View<morton_code*> min_lin_tree_empty("algo2::complete_region::empty min_lin_tree", 0);
+            || morton_helper.is_ancestor(code_b, code_a)
+            || (code_a == code_b && code_a == 0)) {
+            Kokkos::View<morton_code*> min_lin_tree_empty("empty min_lin_tree", 0);
+            IpplTimings::stopTimer(completeRegionTimer);
             return min_lin_tree_empty;
         }
 
-        size_t estimated_size = 79;  // should never have to resize with this
-        Kokkos::View<morton_code*> min_lin_tree("algo2::complete_region::min_lin_tree", estimated_size);
+        // special case: if there is only one octant on the rank we can return it 
+        if (code_a == code_b) {
+            Kokkos::View<morton_code*> min_lin_tree_single("single min_lin_tree", 1);
+            min_lin_tree_single(0) = code_a;
+            IpplTimings::stopTimer(completeRegionTimer);
+            return min_lin_tree_single;
+        }
+
+        size_t estimated_size = 79;  // empirically smallest value that need no resizes
+                                     // this is probably not the case for higher dimensions
+                                     // but is not very performance critical
+        Kokkos::View<morton_code*> min_lin_tree("min_lin_tree", estimated_size);
         size_t idx = 0;
 
         const morton_code nearest_comm_ancestor =
