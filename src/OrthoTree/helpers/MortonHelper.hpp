@@ -47,13 +47,13 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline size_t Morton<Dim>::get_depth(morton_code code) const
+    KOKKOS_FUNCTION inline size_t Morton<Dim>::get_depth(morton_code code) const
     {
         return code & depth_mask;
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_parent(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_parent(morton_code code) const
     {
         assert(code != morton_code(0) && "root has not parent");
 
@@ -72,9 +72,10 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const
+    KOKKOS_FUNCTION inline Kokkos::View<morton_code*> Morton<Dim>::get_children(morton_code code) const
     {
         /*
+        // note: assert() and std::cerr aren't device-compatible
         std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
                             + std::string(" can't get the first child at the deepest level");
         if (get_depth(code) >= max_depth) {
@@ -88,18 +89,16 @@ namespace ippl {
         // each level has a distinctive step size between siblings, this can maybe be improved upon
         const morton_code step = get_step_size(first_child);
 
-        vector_t<morton_code> vec;
-        vec.reserve(n_children);
+        Kokkos::View<morton_code*> children("children", n_children);
+        Kokkos::parallel_for("SetChildren", n_children, KOKKOS_LAMBDA(const size_t i) {
+            children(i) = first_child + (i * step);
+        });
 
-        for ( size_t i = 0; i < n_children; ++i ) {
-            vec.push_back(first_child + (i * step));
-        }
-
-        return vec;
+        return children;
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_siblings(morton_code code) const
+    KOKKOS_FUNCTION inline Kokkos::View<morton_code*> Morton<Dim>::get_siblings(morton_code code) const
     {
         return get_children(get_parent(code));
     }
@@ -129,7 +128,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_first_child(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_first_child(morton_code code) const
     {
         /*
         std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
@@ -180,7 +179,7 @@ namespace ippl {
 
         // the number of descendants at a given relative level are given by 
         // 2^(Dim * (level difference)) as each level multiplies a factor 2^Dim
-        const morton_code num_descendants = (1ULL << (Dim * (level - current_depth)));
+        const morton_code num_descendants = (1 << (Dim * (level - current_depth)));
 
         // the last descendant is num_descendants - 1 morton code steps
         // away from the first descendant
@@ -221,7 +220,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_step_size(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_step_size(morton_code code) const
     {
         // could it be that this can be simplified the following way:
         // the min step size is equal to floor(log2(max_depth)) + 1 == sizeof(depth encoding)

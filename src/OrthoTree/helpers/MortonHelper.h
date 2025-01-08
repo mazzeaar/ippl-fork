@@ -34,17 +34,17 @@ namespace ippl {
         using real_coordinate = real_coordinate_template<Dim>;
 
     public:
-        Morton(size_t max_depth)
+        KOKKOS_FUNCTION Morton(size_t max_depth)
             : max_depth(max_depth)
             , depth_mask_shift(std::floor(std::log2(max_depth)) + 1)
             , depth_mask((1 << depth_mask_shift) - 1)
             , n_children((1 << (Dim))) {}
 
         // deleted to enforce singleton
-        Morton(const Morton&)            = default;
-        Morton& operator=(const Morton&) = default;
-        Morton(Morton&&)                 = default;
-        Morton& operator=(Morton&&)      = default;
+        KOKKOS_FUNCTION Morton(const Morton&)            = default;
+        KOKKOS_FUNCTION Morton& operator=(const Morton&) = default;
+        KOKKOS_FUNCTION Morton(Morton&&)                 = default;
+        KOKKOS_FUNCTION Morton& operator=(Morton&&)      = default;
 
         /**
          * @brief Encodes the given coordinate based on the rasterizer. As of now, the rasterizer is
@@ -90,7 +90,7 @@ namespace ippl {
          * @param code
          * @return size_t
          */
-        inline size_t get_depth(morton_code code) const;
+        KOKKOS_FUNCTION inline size_t get_depth(morton_code code) const;
 
         /**
          * @brief Returns the code of this parent
@@ -98,7 +98,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_parent(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_parent(morton_code code) const;
 
         /**
          * @brief Returns a vector filled with the (2^Dim) children of a node, in ascending order
@@ -106,7 +106,7 @@ namespace ippl {
          * @param code
          * @return vector_t<morton_code>
          */
-        inline vector_t<morton_code> get_children(morton_code code) const;
+        KOKKOS_FUNCTION inline Kokkos::View<morton_code*> get_children(morton_code code) const;
 
         /**
          * @brief Returns the siblings of the given code in ascending order.
@@ -116,7 +116,7 @@ namespace ippl {
          * @param code
          * @return vector_t<morton_code>
          */
-        inline vector_t<morton_code> get_siblings(morton_code code) const;
+        KOKKOS_FUNCTION inline Kokkos::View<morton_code*> get_siblings(morton_code code) const;
 
         /**
          * @brief Returns the first child of a code
@@ -124,7 +124,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_first_child(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_first_child(morton_code code) const;
 
         /**
          * @brief Returns the last child of a code
@@ -203,7 +203,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_step_size(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_step_size(morton_code code) const;
 
     private:
         const size_t max_depth;

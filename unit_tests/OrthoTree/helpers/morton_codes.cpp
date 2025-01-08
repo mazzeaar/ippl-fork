@@ -133,7 +133,10 @@ TEST(MortonCodesTest, GetChildrenTest) {
   Morton<Dim> morton(max_depth);
 
   morton_code parent = morton.encode({ 126, 126, 126 }, 7);
-  vector_t<morton_code> children = morton.get_children(parent);
+
+  Kokkos::ScopeGuard kokkos_guard;
+
+  Kokkos::View<morton_code*> children = morton.get_children(parent);
   vector_t<morton_code> expected;
   for ( grid_t i = 0; i < 2; i++ ) {
     for ( grid_t j = 0; j < 2; j++ ) {
@@ -144,8 +147,11 @@ TEST(MortonCodesTest, GetChildrenTest) {
   }
 
   std::sort(expected.begin(), expected.end());
-
-  EXPECT_EQ(children, expected);
+  
+  EXPECT_EQ(children.size(), expected.size());
+  for (unsigned i = 0; i < expected.size(); ++i) {
+    EXPECT_EQ(children(i), expected[i]);
+  }
 }
 
 TEST(MortonCodesTest, GetParentTest) {
