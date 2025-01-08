@@ -432,6 +432,10 @@ namespace ippl {
     // INPUT HAS TO BE SORTED
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
+
+        IpplTimings::TimerRef algo11Timer = IpplTimings::getTimer("algo11");
+        IpplTimings::startTimer(algo11Timer);
+
         std::cout << "starting algo11\n";
         Kokkos::View<morton_code*> B_view = L_view;  // algo4_11(L_view);
 
@@ -680,6 +684,9 @@ namespace ippl {
         R_view = linearise_octants(R_view);
         std::cout << "Done\n";
         assert(is_balanced(R_view));
+
+        IpplTimings::stopTimer(algo11Timer);
+
         return R_view;
     }
 }  // namespace ippl
