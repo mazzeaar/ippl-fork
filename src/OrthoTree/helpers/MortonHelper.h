@@ -61,7 +61,7 @@ namespace ippl {
          *
          * @return morton_code
          */
-        inline morton_code encode(const real_coordinate& coordinate,
+        KOKKOS_FUNCTION inline morton_code encode(const real_coordinate& coordinate,
                                   const real_coordinate& rasterizer, const size_t depth) const;
 
         /**
@@ -74,7 +74,7 @@ namespace ippl {
          *
          * @return morton_code
          */
-        inline morton_code encode(const grid_coordinate& coordinate, const size_t depth) const;
+        KOKKOS_FUNCTION inline morton_code encode(const grid_coordinate& coordinate, const size_t depth) const;
 
         /**
          * @brief Decodes the given morton code into an integer based coordiante vector
@@ -82,7 +82,7 @@ namespace ippl {
          * @param code a valid morton code (also works with invalid codes lol)
          * @return grid_coordinate
          */
-        inline grid_coordinate decode(morton_code code) const;
+        KOKKOS_FUNCTION inline grid_coordinate decode(morton_code code) const;
 
         /**
          * @brief Returns the encoded depth of a code
@@ -132,7 +132,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_last_child(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_last_child(morton_code code) const;
 
         /**
          * @brief Returns the lth first descendand, the walk is done using only first descendants.
@@ -141,7 +141,7 @@ namespace ippl {
          * @param level
          * @return morton_code
          */
-        inline morton_code get_first_descendant(morton_code code, const size_t level) const;
+        KOKKOS_FUNCTION inline morton_code get_first_descendant(morton_code code, const size_t level) const;
 
         /**
          * @brief Returns the lth last descendant, the walk is done using only last descendants.
@@ -150,7 +150,7 @@ namespace ippl {
          * @param level
          * @return morton_code
          */
-        inline morton_code get_last_descendant(morton_code code, const size_t level) const;
+        KOKKOS_FUNCTION inline morton_code get_last_descendant(morton_code code, const size_t level) const;
 
         /**
          * @brief Returns get_first_descendant(code, max_depth - get_depth(code));
@@ -158,7 +158,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_deepest_first_descendant(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_deepest_first_descendant(morton_code code) const;
 
         /**
          * @brief Returns get_first_descendant(code, max_depth - get_depth(code));
@@ -166,7 +166,7 @@ namespace ippl {
          * @param code
          * @return morton_code
          */
-        inline morton_code get_deepest_last_descendant(morton_code code) const;
+        KOKKOS_FUNCTION inline morton_code get_deepest_last_descendant(morton_code code) const;
 
         /**
          * @brief Returns the nearest common ancestor of the two given codes, is implemented very
@@ -176,7 +176,7 @@ namespace ippl {
          * @param code_b
          * @return morton_code
          */
-        inline morton_code get_nearest_common_ancestor(morton_code code_a,
+        KOKKOS_FUNCTION inline morton_code get_nearest_common_ancestor(morton_code code_a,
                                                        morton_code code_b) const;
 
         /**
@@ -186,7 +186,7 @@ namespace ippl {
          * @param parent the parent code
          * @return true if parent is ancestor of child
          */
-        inline bool is_ancestor(morton_code child, morton_code parent) const;
+        KOKKOS_FUNCTION inline bool is_ancestor(morton_code child, morton_code parent) const;
 
         /**
          * @brief Checks whether the given child is a descendant of the given parents
@@ -195,7 +195,7 @@ namespace ippl {
          * @param parent the parent code
          * @return true if child is descendant of parent
          */
-        inline bool is_descendant(morton_code child, morton_code parent) const;
+        KOKKOS_FUNCTION inline bool is_descendant(morton_code child, morton_code parent) const;
 
         /**
          * @brief Returns the step size with siblings at a given level
@@ -223,7 +223,7 @@ namespace ippl {
          * @param coord
          * @return morton_code
          */
-        inline morton_code spread_coords(grid_t coord) const;
+        KOKKOS_FUNCTION inline morton_code spread_coords(grid_t coord) const;
     };
 
 }  // namespace ippl

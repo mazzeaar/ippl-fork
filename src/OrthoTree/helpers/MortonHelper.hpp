@@ -18,7 +18,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::encode(const grid_coordinate& coordinate, const size_t depth) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::encode(const grid_coordinate& coordinate, const size_t depth) const
     {
         morton_code code = 0;
         for ( size_t i = 0; i < Dim; ++i ) {
@@ -31,7 +31,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline Morton<Dim>::grid_coordinate Morton<Dim>::decode(morton_code code) const
+    KOKKOS_FUNCTION inline Morton<Dim>::grid_coordinate Morton<Dim>::decode(morton_code code) const
     {
         code = code >> depth_mask_shift; // remove depth information
         grid_coordinate grid_pos;
@@ -104,7 +104,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_descendant(morton_code child, morton_code parent) const
+    KOKKOS_FUNCTION inline bool Morton<Dim>::is_descendant(morton_code child, morton_code parent) const
     {
 
         // child has to be finer than parent
@@ -122,7 +122,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_ancestor(morton_code child, morton_code parent) const
+    KOKKOS_FUNCTION inline bool Morton<Dim>::is_ancestor(morton_code child, morton_code parent) const
     {
         return is_descendant(child, parent);
     }
@@ -142,7 +142,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_last_child(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_last_child(morton_code code) const
     {
         /*
         std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
@@ -160,14 +160,14 @@ namespace ippl {
 
     // implementation corrected for absolute level
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_first_descendant(morton_code code, const size_t level) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_first_descendant(morton_code code, const size_t level) const
     {
         return (code & (~depth_mask)) + level;
     }
 
     // implementation corrected for absolute level
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_last_descendant(morton_code code, const size_t level) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_last_descendant(morton_code code, const size_t level) const
     {
         const morton_code current_depth = get_depth(code);
         /*
@@ -187,19 +187,19 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_deepest_first_descendant(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_deepest_first_descendant(morton_code code) const
     {
         return get_first_descendant(code, max_depth);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_deepest_last_descendant(morton_code code) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_deepest_last_descendant(morton_code code) const
     {
         return get_last_descendant(code, max_depth);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_nearest_common_ancestor(morton_code code_a, morton_code code_b) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::get_nearest_common_ancestor(morton_code code_a, morton_code code_b) const
     {
         size_t depth_a = get_depth(code_a);
         size_t depth_b = get_depth(code_b);
@@ -230,7 +230,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::spread_coords(grid_t coord) const
+    KOKKOS_FUNCTION inline morton_code Morton<Dim>::spread_coords(grid_t coord) const
     {
         morton_code res = 0;
         for (size_t i = 0; i < max_depth + 1; ++i) {
