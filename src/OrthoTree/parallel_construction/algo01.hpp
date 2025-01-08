@@ -13,6 +13,10 @@ namespace ippl {
         IpplTimings::startTimer(aidListTimer);
 
         this->aid_list_m.initialize(root_bounds_m, particles);
+        if (aid_list_m.size() == 0) {
+            END_FUNC;
+            throw std::runtime_error("No particles on rank algo1");
+        }
         auto [min_octant, max_octant] = this->aid_list_m.getMinReqOctants();
 
         IpplTimings::stopTimer(aidListTimer);
@@ -49,10 +53,13 @@ namespace ippl {
             const size_t octant_depth = this->morton_helper.get_depth(octant);
             const size_t remaining_depth = this->max_depth_m - octant_depth;
 
-            // worst_case: we use all available octants
-            const size_t max_possible_size = (size_t(1) << (Dim * remaining_depth));
-
-            return max_possible_size;
+            // empirical guess this could be improved if it was constructed in some 
+            // more clever way
+            // But a good guess depends a lot on the distribution here.
+            // This is more of an upper limit for a good guess probably
+            const size_t guess = std::max(2* this->aid_list_m.getNumParticlesInOctant(octant)
+                                  / this->max_particles_per_node_m, (size_t)10);
+            return guess;
             };
 
         const size_t old_size = tree_view.size();

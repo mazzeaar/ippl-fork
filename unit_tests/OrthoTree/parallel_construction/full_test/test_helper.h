@@ -113,6 +113,8 @@ std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
     // gather sizes from all ranks on rank 0
     parallel_tree = gatherTreeOnRootRank(parallel_tree);
 
+    ippl::Morton<Dim> morton_helper(tree.getMaxDepth());
+
     const size_t world_rank = Comm->rank();
     std::ostringstream oss;
     if (world_rank == 0) {
@@ -130,8 +132,11 @@ std::string executeTestRun(BoundingBox<Dim>& root_bounds, OrthoTree<Dim>& tree,
             morton_code par_octant = parallel_tree[i];
             morton_code seq_octant = sequential_tree[i];
             if (par_octant != seq_octant) {
-                oss << "octants dont match at index=" << i << " par=" << par_octant
-                    << " seq=" << seq_octant << std::endl;
+                oss << "octants dont match at index=" << i << " par=" << morton_helper.decode(par_octant)
+                    << " | " << morton_helper.get_depth(par_octant) 
+                    << " seq=" << morton_helper.decode(seq_octant)
+                    << " | " << morton_helper.get_depth(seq_octant) << std::endl;
+
             }
         }
     }

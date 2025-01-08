@@ -25,8 +25,11 @@ namespace ippl {
 
         const size_t input_size = input_view.size();
 
-        assert(input_size > 0
-               && "Octants.size() is zero, dont call this function with an empty list!");
+        if (input_view.size() == 0) {
+            IpplTimings::stopTimer(lineariseOctantsTimer);
+            return Kokkos::View<morton_code*>("algo8::linearised_view", 0);
+        }
+
 
         // to remove warnings due to KOKKOS_LAMBDA
         const auto local_morton_helper = this->morton_helper;
@@ -35,8 +38,9 @@ namespace ippl {
             "algo8::CountValidOctants", input_size - 1,
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 // no branching this way
-                local_count += static_cast<size_t>(
-                    !local_morton_helper.is_ancestor(input_view(i + 1), input_view(i)));
+                int should_count = !local_morton_helper.is_ancestor(input_view(i + 1), input_view(i))
+                                    && input_view(i + 1) != input_view(i);
+                local_count += static_cast<size_t>(should_count);
             },
             count);
 
@@ -46,7 +50,7 @@ namespace ippl {
 
         Kokkos::parallel_scan(
                 "algo8:AddRelevantOctants", input_size - 1, KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                    if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i))) {
+                    if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i)) && input_view(i+1) != input_view(i)) {
                         if (final) {
                             output_view(index) = input_view(i);
                         }
