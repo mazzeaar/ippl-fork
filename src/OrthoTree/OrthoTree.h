@@ -239,9 +239,11 @@ namespace ippl {
                     mpi::Status status;
                     Comm->recv(&ring_buf, 1, world_rank + 1, 0, status);
                 } else {
+                    /*
                     std::cerr << std::string(col_width * 3, '=') << std::endl;
                     printer("rank", "octs_now", "particles");
                     std::cerr << std::string(col_width * 3, '-') << std::endl;
+                    */
                 }
 
                 printer(world_rank, tree_view.size(), total_particles);
@@ -262,7 +264,7 @@ namespace ippl {
             }
         }
 
-        void print_stats_seq(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
+        void print_stats_seq(Kokkos::View<morton_code*>& tree_view) {
             size_t total_particles = 0;
             for (size_t i = 0; i < tree_view.size(); ++i) {
                 auto num_particles = this->aid_list_m.getNumParticlesInOctant(tree_view[i]);
