@@ -15,7 +15,7 @@ namespace ippl {
         , logger("AidList", std::cerr, INFORM_ALL_NODES) {
         logger.setOutputLevel(5);
         logger.setPrintNode(INFORM_ALL_NODES);
-        bucket_borders = Kokkos::View<morton_code*>("bucket_borders", world_size - 1);
+        bucket_borders = Kokkos::DualView<morton_code*>("bucket_borders", world_size - 1);
 
         // logger << "Initialized AidList" << endl;
     }
@@ -39,11 +39,11 @@ namespace ippl {
             Comm->recv(&bucket_size, 1, 0, 1, stat);
 
             IpplTimings::TimerRef bucket_distribution =
-                IpplTimings::getTimer("Bucket Distribution Timer");
+            IpplTimings::getTimer("Bucket Distribution Timer");
             IpplTimings::startTimer(bucket_distribution);
             // allocate the space for the bucket in the aid list
-            octants      = Kokkos::View<morton_code*>("aid_list::octants", bucket_size);
-            particle_ids = Kokkos::View<size_t*>("aid_list::particle_ids", bucket_size);
+            octants      = Kokkos::DualView<morton_code*>("aid_list::octants", bucket_size);
+            particle_ids = Kokkos::DualView<size_t*>("aid_list::particle_ids", bucket_size);
 
             // receive the octants and the particle ids
             logger << "Receiving octants and particle ids on rank " << world_rank << endl;
@@ -67,27 +67,27 @@ namespace ippl {
         const size_t n_particles = octants.size();
 
         // vector storing the actual sizes of the buckets initially 0
-        Kokkos::View<size_t*> bucket_sizes("aid_list::distribute_buckets::bucket_sizes",
+        Kokkos::View<size_t*, Kokkos::HostSpace> bucket_sizes("aid_list::distribute_buckets::bucket_sizes",
                                            world_size);
         Kokkos::deep_copy(bucket_sizes, 0);
 
         Kokkos::View<size_t*> buckets_particle_ids(
             "aid_list::distribute_buckets::buckets_particle_ids", n_particles);
-        Kokkos::View<morton_code*> buckets_octants("aid_list::distribute_buckets::buckets_octants",
+        Kokkos::View<morton_code*,Kokkos::HostSpace> buckets_octants("aid_list::distribute_buckets::buckets_octants",
                                                    n_particles);
-        Kokkos::View<size_t*> bucket_indices("aid_list::distribute_buckets::bucket_indices",
+        Kokkos::View<size_t*, Kokkos::HostSpace> bucket_indices("aid_list::distribute_buckets::bucket_indices",
                                              world_size);
         Kokkos::deep_copy(bucket_indices, 0);
 
-        Kokkos::View<size_t*> sizes_prefix_sum("aid_list::distribute_buckets::sizes_prefix_sum",
+        Kokkos::View<size_t*, Kokkos::HostSpace> sizes_prefix_sum("aid_list::distribute_buckets::sizes_prefix_sum",
                                                world_size);
 
         // get the target rank for a given octant
         auto get_target_rank = [&](morton_code octant) {
             const size_t target_rank =
-                std::upper_bound(bucket_borders.data(),
-                                 bucket_borders.data() + bucket_borders.size(), octant)
-                - bucket_borders.data();
+                std::upper_bound(bucket_borders.h_view.data(),
+                                 bucket_borders.h_view.data() + bucket_borders.h_view.size(), octant)
+                - bucket_borders.h_view.data();
 
             return target_rank;
         };
@@ -104,15 +104,17 @@ namespace ippl {
             // the first k ranks get a range one larger than the rest
             // !!! These might not be valid morton_codes but it doesn't matter since
             // they are only used to distribute the octants
+            bucket_borders.modify_host();
             for (size_t i = 1; i < world_size; ++i) {
                 const size_t offset = i < k ? i : k;
 
-                bucket_borders(i - 1) = i * avg_bucket_size + offset;
-                logger << "actual Bucket border " << i << ": " << bucket_borders(i) << endl;
+                bucket_borders.h_view(i - 1) = i * avg_bucket_size + offset;
+                logger << "actual Bucket border " << i << ": " << bucket_borders.h_view(i) << endl;
             }
 
-            std::sort(bucket_borders.data(), bucket_borders.data() + bucket_borders.extent(0));
-            Comm->broadcast(bucket_borders.data(), bucket_borders.size(), 0);
+            bucket_borders.modify_host();
+            std::sort(bucket_borders.h_view.data(), bucket_borders.h_view.data() + bucket_borders.h_view.extent(0));
+            Comm->broadcast(bucket_borders.h_view.data(), bucket_borders.h_view.size(), 0);
         }
 
         IpplTimings::TimerRef bucket_distribution =
@@ -124,7 +126,7 @@ namespace ippl {
          */
         {
             for (unsigned i = 0; i < n_particles; i++) {
-                const morton_code octant = octants(i);
+                const morton_code octant = octants.h_view(i);
                 const size_t target_rank = get_target_rank(octant);
                 bucket_sizes(target_rank)++;
             }
@@ -132,7 +134,7 @@ namespace ippl {
             size_t local_total = 0;
             Kokkos::parallel_scan(
                 "aid_list::distribute_buckets::calculate bucket size for each rank::prefix_sum",
-                world_size,
+                Kokkos::RangePolicy<Kokkos::HostSpace::execution_space>(0, world_size),
                 KOKKOS_LAMBDA(const size_t i, size_t& sum, const bool final) {
                     sum += bucket_sizes(i);
                     if (final) {
@@ -143,12 +145,12 @@ namespace ippl {
         }
 
         /**
-         * Populate the buckets for each rank
+         * Populate the buckets for each rank TODO: this can be done in parallel
          */
         {
             for (unsigned i = 0; i < n_particles; i++) {
-                const morton_code octant = octants(i);
-                const size_t particle_id = particle_ids(i);
+                const morton_code octant = octants.h_view(i);
+                const size_t particle_id = particle_ids.h_view(i);
 
                 const size_t target_rank  = get_target_rank(octant);
                 const size_t target_index = sizes_prefix_sum(target_rank)
@@ -206,8 +208,10 @@ namespace ippl {
             IpplTimings::stopTimer(bucket_distribution);
 
             auto index_pair = std::make_pair((size_t)0, bucket_sizes(0));
-            Kokkos::deep_copy(octants, Kokkos::subview(buckets_octants, index_pair));
-            Kokkos::deep_copy(particle_ids, Kokkos::subview(buckets_particle_ids, index_pair));
+            octants.modify_host();
+            particle_ids.modify_host();
+            Kokkos::deep_copy(octants.h_view, Kokkos::subview(buckets_octants, index_pair));
+            Kokkos::deep_copy(particle_ids.h_view, Kokkos::subview(buckets_particle_ids, index_pair));
         }
     }
 
@@ -447,11 +451,11 @@ namespace ippl {
             for (size_t i = 0; i < world_size; ++i) {
                 upper_bound_octant = dld_root;
                 if (i < world_size - 1) {
-                    upper_bound_octant = bucket_borders(i);
+                    upper_bound_octant = bucket_borders.h_view(i);
                 }
 
                 if (i > 0) {
-                    lower_bound_octant = bucket_borders(i - 1);
+                    lower_bound_octant = bucket_borders.h_view(i - 1);
                 }
 
                 // skip processor if no interesting octants are there

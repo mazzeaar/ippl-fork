@@ -22,10 +22,10 @@ namespace ippl {
          * They will only be accessed through the helper functions below, so if we decide to change
          * implementation we (should) only have to change those and everything sould still work.
          */
-        Kokkos::View<morton_code*> octants;
-        Kokkos::View<size_t*> particle_ids;
+        Kokkos::DualView<morton_code*> octants;
+        Kokkos::DualView<size_t*> particle_ids;
 
-        Kokkos::View<morton_code*> bucket_borders;
+        Kokkos::DualView<morton_code*> bucket_borders;
 
     public:
         AidList(size_t max_depth);
