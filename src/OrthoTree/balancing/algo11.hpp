@@ -202,7 +202,7 @@ namespace ippl {
                                                  Kokkos::View<morton_code*> H_view,
                                                  Kokkos::View<morton_code*> F_view) {
         auto should_insert = KOKKOS_LAMBDA(morton_code octant_to_insert) {
-            for (int i = 0; i < B_view.size(); i++) {
+            for (size_t i = 0; i < B_view.size(); i++) {
                 auto b_oct = B_view(i);
                 if (b_oct == octant_to_insert || morton_helper.is_ancestor(octant_to_insert, b_oct))
                     return true;
@@ -258,7 +258,7 @@ namespace ippl {
             Kokkos::View<morton_code*> source_data(
                 "source_data", std::max(window_sizes(source_rank), B_view.size()));
             // TODO make this better
-            for (int i = 0; i < B_view.size(); i++) {
+            for (size_t i = 0; i < B_view.size(); i++) {
                 source_data(i) = B_view(i);
             }
             {
@@ -375,7 +375,7 @@ namespace ippl {
                     size_t T_start = source_rank == 0? 0 : T_recv_sizes(source_rank-1);
                     size_t T_end = T_recv_sizes(source_rank);
 
-                    for (int j = T_start; j < T_end; j++) {
+                    for (size_t j = T_start; j < T_end; j++) {
                         const morton_code T_oct = T_view(j);
                         auto insulation_layer = morton_helper.get_insulation_layer(T_oct);
                         size_t rank_t = 0;
@@ -524,7 +524,7 @@ namespace ippl {
             total_recv_size = recv_sizes(recv_sizes.size() - 1);
         }
         Kokkos::View<morton_code*> T_view("T_view", total_recv_size + overlapping_octants.size());
-        for (int i = total_recv_size; i < T_view.size(); i++) {
+        for (size_t i = total_recv_size; i < T_view.size(); i++) {
             T_view(i) = overlapping_octants(i - total_recv_size);
         }
 
@@ -626,7 +626,7 @@ namespace ippl {
             K_total_recv_size = K_recv_sizes(K_recv_sizes.size() - 1);
         }
         Kokkos::View<morton_code*> K_view("K_view", K_total_recv_size + K_overlapping_octants.size());
-        for (int i = K_total_recv_size; i < K_view.size(); i++) {
+        for (size_t i = K_total_recv_size; i < K_view.size(); i++) {
             K_view(i) = K_overlapping_octants(i - K_total_recv_size);
         }
 
