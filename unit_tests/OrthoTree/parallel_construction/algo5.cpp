@@ -37,7 +37,7 @@ TEST(ParallelOrthoTreeTest, PartitionTestDistribute) {
         Kokkos::View<size_t*> empty;
         result = tree_3d.partition(data, empty);
     }
-    ASSERT_EQ(result.size(), expected.size());
+    EXPECT_EQ(result.size(), expected.size());
     for (size_t i = 0; i < expected.size(); i++) {
         EXPECT_EQ(result[i], expected[i]);
     }
@@ -83,7 +83,7 @@ TEST(ParallelOrthoTreeTest, PartitionTestWeighted) {
         expected(0) = 4;
         expected(1) = 5;
     }
-    ASSERT_EQ(result.size(), expected.size());
+    EXPECT_EQ(result.size(), expected.size());
     for (size_t i = 0; i < expected.size(); i++) {
         EXPECT_EQ(result[i], expected[i]);
     }
@@ -133,7 +133,7 @@ TEST(ParallelOrthoTreeTest, PartitionTestDistributeUneven) {
         expected(1) = 1;
         result   = tree_3d.partition(data, weights);
     }
-    ASSERT_EQ(result.size(), expected.size());
+    EXPECT_EQ(result.size(), expected.size());
     for (size_t i = 0; i < expected.size(); i++) {
         EXPECT_EQ(result[i], expected[i]);
     }

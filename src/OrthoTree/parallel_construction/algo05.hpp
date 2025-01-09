@@ -173,10 +173,12 @@ namespace ippl {
         }
 
         // insert the octants that stay on this rank fast
+        auto local_rank = world_rank;
         Kokkos::parallel_for(
-            "algo5::insert partitioned_octants", local_end_idx - local_start_idx, KOKKOS_LAMBDA(const size_t i) {
+            "algo5::insert partitioned_octants", local_end_idx - local_start_idx,
+            KOKKOS_LAMBDA(const size_t i) {
                 unsigned insert_start_idx =
-                    received_prefix_sum(world_rank) - received_sizes(world_rank);
+                    received_prefix_sum(local_rank) - received_sizes(local_rank);
                 partitioned_octants(insert_start_idx + i) = octants(local_start_idx + i);
             });
 

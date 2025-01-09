@@ -95,22 +95,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const
-    {
-        /*
-        std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
-                            + std::string(" can't get the first child at the deepest level");
-        if (get_depth(code) >= max_depth) {
-            std::cerr << "ERROR HERE:    " << error << std::endl;
-        }
-        assert(get_depth(code) < max_depth && "can't get the first child at the deepest level");
-        */
-
-        const morton_code first_child = get_first_child(code);
-
-        // each level has a distinctive step size between siblings, this can maybe be improved upon
-        const morton_code step = get_step_size(first_child);
-
+    inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const {
         vector_t<morton_code> vec;
         vec.reserve(n_children);
 
@@ -319,7 +304,8 @@ namespace ippl {
            
             // i == index means we should get the corner leaf itself
             // this is not a useful key for searching
-            if (i == index) continue;
+            if (i == static_cast<size_t>(index))
+                continue;
 
             for (size_t j = 0; j < Dim; ++j) {
                 // this way the single coordinates of the offset are kind of 
@@ -353,8 +339,9 @@ namespace ippl {
 
         // we iterate over the 3^Dim hypercube surrounding the node 
         for (size_t i = 0; i < std::pow(3, Dim); ++i) {
-            // we skip the center as we are only interested in the neighbors 
-            if (i == (int)std::pow(3, Dim) / 2) continue;
+            // we skip the center as we are only interested in the neighbors
+            if (i == (size_t)std::pow(3, Dim) / 2)
+                continue;
             for (size_t j = 0; j < Dim; ++j) {
                 int three_pow_j = std::pow(3, j);
                 int ternary_digit = (i / three_pow_j) % 3;

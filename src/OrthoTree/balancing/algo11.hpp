@@ -66,7 +66,6 @@ namespace ippl {
 
             Kokkos::resize(output, out_size);
 
-            size_t index = 0;
             Kokkos::parallel_scan(
                     "algo3::PopulateUniqueElements", input.size() - 1, 
                     KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
@@ -418,8 +417,7 @@ namespace ippl {
 
                     for (size_t j = T_start; j < T_end; j++) {
                         const morton_code T_oct = T_view(j);
-                        auto insulation_layer = morton_helper.get_insulation_layer(T_oct);
-                        size_t rank_t = 0;
+                        auto insulation_layer   = morton_helper.get_insulation_layer(T_oct);
 
                         if (!contains(insulation_layer, G_oct)) {
                             continue;
@@ -500,7 +498,7 @@ namespace ippl {
 
                           const size_t count = count_octants(L_view, should_copy);
                           if (count == 0) {
-                              std::cerr << "why is count == 0?" << endl;
+                              std::cerr << "why is count == 0?" << std::endl;
                               return;
                           }
 

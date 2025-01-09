@@ -6,7 +6,6 @@
 #include <fstream>
 #include <span>
 #include <unordered_set>
-#include <span>
 #include <vector>
 
 #include "OrthoTreeTypes.h"
@@ -83,7 +82,7 @@ namespace ippl {
 
         size_t getMaxDepth() const { return max_depth_m; }
 
-        AidList<Dim>* getAidList(){ return &this->aid_list_m;}
+        AidList<Dim>* getAidList() { return &this->aid_list_m; }
 
         /**
          * @brief This is the most basic way to build a tree. Its inefficien, but it (should) be
@@ -93,7 +92,6 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> build_tree_naive(particle_t const& particles);
 
-#pragma region paralell construction
         /**
          * ALGO 1
          *
@@ -153,7 +151,8 @@ namespace ippl {
          * @return block partitioned octree, and unpartitioned_tree is re-distributed
          **/
         Kokkos::View<morton_code*> block_partition(morton_code min_octant, morton_code max_octant);
-        std::pair<Kokkos::View<morton_code*>, Kokkos::View<morton_code*>> algo4_11(Kokkos::View<morton_code*> F_view);
+        std::pair<Kokkos::View<morton_code*>, Kokkos::View<morton_code*>> algo4_11(
+            Kokkos::View<morton_code*> F_view);
 
         /**
          * ALGO 5
@@ -182,10 +181,6 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
 
-#pragma endregion  // paralell construction
-
-#pragma region balancing
-
         template <size_t algo_nr>
         Kokkos::View<morton_code*> algo_7_10_base(const morton_code octant_N,
                                                   Kokkos::View<morton_code*> partial_descendants_L);
@@ -202,11 +197,6 @@ namespace ippl {
 
         Kokkos::View<morton_code*> algo11(Kokkos::View<morton_code*> distributed_complete_tree_L);
 
-#pragma endregion  // balancing
-
-#pragma region helpers
-
-        
         /**
          * @brief Compares the following aspects of the trees:
          * - n_particles
@@ -220,8 +210,6 @@ namespace ippl {
          * @return false
          */
         bool operator==(const OrthoTree& other);
-
-#pragma endregion  // helpers
 
         /**
          * @brief Constructs a tree in each octant inside the given container.
@@ -237,13 +225,11 @@ namespace ippl {
         void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
 
         /**
-         * @brief Checks whether the tree is balanced 
+         * @brief Checks whether the tree is balanced
          */
         bool is_balanced(const Kokkos::View<morton_code*>& tree_view) const;
 
     public:
-#pragma region print_helpers
-
         void print_stats(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
             if (!enable_print_stats) {
                 return;
@@ -297,7 +283,7 @@ namespace ippl {
             }
         }
 
-        void print_stats_seq(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
+        void print_stats_seq(Kokkos::View<morton_code*>& tree_view) {
             size_t total_particles = 0;
             for (size_t i = 0; i < tree_view.size(); ++i) {
                 auto num_particles = this->aid_list_m.getNumParticlesInOctant(tree_view[i]);
@@ -381,8 +367,6 @@ namespace ippl {
             file.close();
         }
     };
-#pragma endregion  // print_helpers
-
 }  // namespace ippl
 
 #include "OrthoTree.hpp"

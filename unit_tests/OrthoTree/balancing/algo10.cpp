@@ -8,7 +8,6 @@ TEST(CompleteSubtreeTest, TestTest) {
     static constexpr size_t Dim = 2;
     const size_t max_depth      = 6;
     const size_t max_particles  = 100;
-    const size_t n_particles    = 10;
 
     BoundingBox<Dim> bounds({0.0, 0.0}, {1.0, 1.0});
     OrthoTree<Dim> tree(max_depth, max_particles, bounds);
@@ -57,7 +56,6 @@ TEST(CompleteSubtreeTest, EmptyPartialDescendants) {
     static constexpr size_t Dim = 2;
     const size_t max_depth      = 3;
     const size_t max_particles  = 100;
-    const size_t n_particles    = 10;
 
     BoundingBox<Dim> bounds({0.0, 0.0}, {1.0, 1.0});
     OrthoTree<Dim> tree(max_depth, max_particles, bounds);

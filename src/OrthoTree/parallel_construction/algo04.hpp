@@ -1,5 +1,6 @@
 #include <string>
 #include <utility>
+
 #include "../OrthoTree.h"
 
 /*
@@ -9,18 +10,20 @@
 namespace ippl {
 
     /**
-     * @brief get weights for all octants in G equal to the total number of descendants in 
+     * @brief get weights for all octants in G equal to the total number of descendants in
      * the global F view across all processors
      */
     template <size_t Dim>
-    std::pair<Kokkos::View<size_t*>, Kokkos::View<morton_code*>> getWeights(Morton<Dim> morton_helper, Kokkos::View<morton_code*> G, Kokkos::View<morton_code*> F_view){
+    std::pair<Kokkos::View<size_t*>, Kokkos::View<morton_code*>> getWeights(
+        Morton<Dim> morton_helper, Kokkos::View<morton_code*> G,
+        Kokkos::View<morton_code*> F_view) {
         Kokkos::View<size_t*> weights("weights", G.size());
         Kokkos::deep_copy(weights, int(0));
 
         const size_t world_size = Comm->size();
         const size_t world_rank = Comm->rank();
 
-        Kokkos::View<morton_code*> borders("borders", world_size-1);
+        Kokkos::View<morton_code*> borders("borders", world_size - 1);
 
         // communicate sizes
         Kokkos::View<size_t*> window_sizes("window_sizes", world_size);
@@ -34,14 +37,13 @@ namespace ippl {
             Glob_view.fence(0);
         }
 
-        size_t send_idx                     = 0;
         const size_t data_to_send_base_size = 100;
         Kokkos::View<morton_code*> data_to_send("octants_to_send", data_to_send_base_size);
 
-        size_t offset = 0;
         // scan the window of each rank
         for (size_t source_rank = 0; source_rank < world_size; ++source_rank) {
-            if((window_sizes(source_rank) == 0)) continue;
+            if (window_sizes(source_rank) == 0)
+                continue;
             // load data
             Kokkos::View<morton_code*> source_data(
                 "source_data", std::max(window_sizes(source_rank), F_view.size()));
@@ -49,8 +51,7 @@ namespace ippl {
             for (size_t i = 0; i < F_view.size(); i++) {
                 source_data(i) = F_view(i);
             }
-            if(world_rank != source_rank)
-            {
+            if (world_rank != source_rank) {
                 auto source_span =
                     std::span(source_data.data(), source_data.data() + source_data.size());
                 Glob_view.fence(0);
@@ -60,22 +61,24 @@ namespace ippl {
                 Kokkos::resize(source_data, window_sizes(source_rank));
             }
 
-            if(source_rank != world_size-1) borders(source_rank) = source_data(source_data.size()-1)+1;
-            
-            for(size_t i = 0; i < G.size(); i++){
-                const auto lower_bound_it =
-                    std::lower_bound(source_data.data(), source_data.data() + source_data.extent(0), G(i),
-                                     [](const morton_code& octants_entry, const morton_code& target) {
-                                         return octants_entry < target;
-                                     });
+            if (source_rank != world_size - 1)
+                borders(source_rank) = source_data(source_data.size() - 1) + 1;
+
+            for (size_t i = 0; i < G.size(); i++) {
+                const auto lower_bound_it = std::lower_bound(
+                    source_data.data(), source_data.data() + source_data.extent(0), G(i),
+                    [](const morton_code& octants_entry, const morton_code& target) {
+                        return octants_entry < target;
+                    });
 
                 auto lower_bound_idx = static_cast<size_t>(lower_bound_it - source_data.data());
 
-                const auto upper_bound_it =
-                    std::upper_bound(source_data.data(), source_data.data() + source_data.extent(0), morton_helper.get_deepest_last_descendant(G(i)),
-                                     [](const morton_code& target, const morton_code& octants_entry) {
-                                         return target < octants_entry;
-                                     });
+                const auto upper_bound_it = std::upper_bound(
+                    source_data.data(), source_data.data() + source_data.extent(0),
+                    morton_helper.get_deepest_last_descendant(G(i)),
+                    [](const morton_code& target, const morton_code& octants_entry) {
+                        return target < octants_entry;
+                    });
 
                 auto upper_bound_idx = static_cast<size_t>(upper_bound_it - source_data.data());
                 weights(i) += upper_bound_idx - lower_bound_idx;
@@ -86,7 +89,10 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> updateFview(Morton<Dim> morton_helper, Kokkos::View<morton_code*> F_view, Kokkos::View<morton_code*> bucket_borders, Kokkos::View<morton_code*> octants) {
+    Kokkos::View<morton_code*> updateFview(Morton<Dim> morton_helper,
+                                           Kokkos::View<morton_code*> F_view,
+                                           Kokkos::View<morton_code*> bucket_borders,
+                                           Kokkos::View<morton_code*> octants) {
         size_t world_size = Comm->size();
         size_t world_rank = Comm->rank();
         // holds min/max octant from each rank
@@ -98,8 +104,9 @@ namespace ippl {
 
         // number of octants this rank will receive
         size_t new_size_after_exchange = 0;
-        morton_code min_octant = octants(0);
-        morton_code max_octant = morton_helper.get_deepest_last_descendant(octants(octants.size()-1));
+        morton_code min_octant         = octants(0);
+        morton_code max_octant =
+            morton_helper.get_deepest_last_descendant(octants(octants.size() - 1));
 
         /**
          * Populate the ranges view with the min/max octant for each rank.
@@ -133,7 +140,8 @@ namespace ippl {
                 morton_code lower_range = std::max(min_octant, lower_bound_octant);
                 morton_code upper_range = std::min(max_octant, upper_bound_octant);
 
-                if(i == world_size-1) upper_range += 1;
+                if (i == world_size - 1)
+                    upper_range += 1;
 
                 // no need to send to ourselves
                 if (i == world_rank) {
@@ -141,7 +149,7 @@ namespace ippl {
                     ranges(2 * i + 1) = upper_range;
                     continue;
                 }
-                
+
                 // find the range of octants that are in the current bucket
                 range_window.put(lower_range, i, 2 * world_rank);
                 range_window.put(upper_range, i, 2 * world_rank + 1);
@@ -174,20 +182,19 @@ namespace ippl {
                 if (ranges(2 * rank) == ranges(2 * rank + 1)) {
                     continue;
                 }
-                auto lower_bound_it =
-                    std::lower_bound(F_view.data(), F_view.data() + F_view.extent(0), ranges(2*rank),
-                                     [](const morton_code& octants_entry, const morton_code& target) {
-                                         return octants_entry < target;
-                                     });
+                auto lower_bound_it = std::lower_bound(
+                    F_view.data(), F_view.data() + F_view.extent(0), ranges(2 * rank),
+                    [](const morton_code& octants_entry, const morton_code& target) {
+                        return octants_entry < target;
+                    });
 
-                send_indices(2 * rank)     = static_cast<size_t>(lower_bound_it - F_view.data());
-                lower_bound_it =
-                    std::lower_bound(F_view.data(), F_view.data() + F_view.extent(0), ranges(2*rank+1),
-                                     [](const morton_code& octants_entry, const morton_code& target) {
-                                         return octants_entry < target;
-                                     });
+                send_indices(2 * rank) = static_cast<size_t>(lower_bound_it - F_view.data());
+                lower_bound_it         = std::lower_bound(
+                    F_view.data(), F_view.data() + F_view.extent(0), ranges(2 * rank + 1),
+                    [](const morton_code& octants_entry, const morton_code& target) {
+                        return octants_entry < target;
+                    });
                 send_indices(2 * rank + 1) = static_cast<size_t>(lower_bound_it - F_view.data());
-                size_t send_size = send_indices(2 * rank + 1) - send_indices(2 * rank);
 
                 // no need to communicate with ourselves
                 if (rank == world_rank) {
@@ -221,9 +228,9 @@ namespace ippl {
 
             auto new_octants_span = std::span(new_octants.data(), new_octants.size());
 
-            auto new_octants_start_it   = new_octants_span.begin();
+            auto new_octants_start_it = new_octants_span.begin();
 
-            auto octants_span      = std::span(F_view.data(), F_view.size());
+            auto octants_span = std::span(F_view.data(), F_view.size());
 
             mpi::rma::Window<mpi::rma::Active> octants_window;
 
@@ -242,8 +249,8 @@ namespace ippl {
 
                 // get the iterators inbetween which the new octants from this
                 // rank will be inserted
-                auto start_it_octants      = new_octants_start_it + last_insert_idx;
-                auto end_it_octants        = start_it_octants + recv_size;
+                auto start_it_octants = new_octants_start_it + last_insert_idx;
+                auto end_it_octants   = start_it_octants + recv_size;
 
                 static_assert(std::contiguous_iterator<decltype(start_it_octants)>,
                               "Iterator does not satisfy contiguous_iterator");
@@ -273,7 +280,7 @@ namespace ippl {
 
             octants_window.fence(0);
 
-            F_view      = new_octants;
+            F_view = new_octants;
         }
         return F_view;
     }
@@ -288,15 +295,15 @@ namespace ippl {
         IpplTimings::TimerRef blockPartitionTimer = IpplTimings::getTimer("block_partition");
         IpplTimings::startTimer(blockPartitionTimer);
 
-
+        auto local_morton_helper     = morton_helper;
         Kokkos::View<morton_code*> T = complete_region(min_octant, max_octant);
 
         // find the lowest level (smallest depth)
         size_t lowest_level = max_depth_m;
-        Kokkos::parallel_reduce("algo4::FindLowestLevel",
-            T.size(),
+        Kokkos::parallel_reduce(
+            "algo4::FindLowestLevel", T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& min_depth) {
-                size_t depth = morton_helper.get_depth(T(i));
+                size_t depth = local_morton_helper.get_depth(T(i));
                 if (depth < min_depth) {
                     min_depth = depth;
                 }
@@ -308,20 +315,18 @@ namespace ippl {
         Kokkos::parallel_reduce(
             "algo4::CountAtLowestLevel", T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& count) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     count++;
                 }
             },
             C_size);
-        
 
         Kokkos::View<morton_code*> C("algo4::C_view", C_size);
-
 
         // populate C_view
         Kokkos::parallel_scan(
             "algo4::PopulateC", T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     if (final) {
                         C(index) = T(i);
                     }
@@ -362,12 +367,13 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    std::pair<Kokkos::View<morton_code*>, Kokkos::View<morton_code*>> OrthoTree<Dim>::algo4_11(Kokkos::View<morton_code*> F_view) {
+    std::pair<Kokkos::View<morton_code*>, Kokkos::View<morton_code*>> OrthoTree<Dim>::algo4_11(
+        Kokkos::View<morton_code*> F_view) {
         assert(F_view.size() > 0 && "Size missmatch");
-        logger.setOutputLevel(1);
+        const auto local_morton_helper = morton_helper;
 
-        const morton_code min_oct = F_view(0);
-        const morton_code max_oct = F_view(F_view.size() - 1);
+        const morton_code min_oct    = F_view(0);
+        const morton_code max_oct    = F_view(F_view.size() - 1);
         Kokkos::View<morton_code*> T = complete_region(min_oct, max_oct);
 
         // the lowest level is actually the 'highest' (closest to root) node in our tree
@@ -375,7 +381,7 @@ namespace ippl {
         Kokkos::parallel_reduce(
             T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& min_depth) {
-                size_t depth = morton_helper.get_depth(T(i));
+                size_t depth = local_morton_helper.get_depth(T(i));
                 if (depth < min_depth) {
                     min_depth = depth;
                 }
@@ -387,7 +393,7 @@ namespace ippl {
         Kokkos::parallel_reduce(
             T.size(),
             KOKKOS_LAMBDA(const size_t i, size_t& count) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     count++;
                 }
             },
@@ -398,7 +404,7 @@ namespace ippl {
         // populate C_view
         Kokkos::parallel_scan(
             T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                if (morton_helper.get_depth(T(i)) == lowest_level) {
+                if (local_morton_helper.get_depth(T(i)) == lowest_level) {
                     if (final) {
                         C(index) = T(i);
                     }
@@ -414,11 +420,12 @@ namespace ippl {
 
         Kokkos::View<morton_code*> G = complete_tree(C);
 
-        auto [weights_view, borders]     = getWeights(this->morton_helper, G, F_view);
-        
+        auto [weights_view, borders] = getWeights(this->morton_helper, G, F_view);
+
         Kokkos::View<morton_code*> octants = partition(G, weights_view);
 
-        Kokkos::View<morton_code*> new_F_view = updateFview(this->morton_helper, F_view, borders, octants);
+        Kokkos::View<morton_code*> new_F_view =
+            updateFview(this->morton_helper, F_view, borders, octants);
 
         return std::make_pair(octants, new_F_view);
     }

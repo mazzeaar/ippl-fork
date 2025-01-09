@@ -44,7 +44,7 @@ TEST(BalanceSubtreeTest, 2DSimple) {
     std::sort(expected.data(), expected.data() + expected.size());
     
     ASSERT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
-    for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
+    for (size_t i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
         EXPECT_EQ(balanced_tree(i), expected(i))
           << "expected=" << morton.decode(expected(i)) 
           << ", actual=" << morton.decode(balanced_tree(i));
@@ -86,9 +86,9 @@ TEST(BalanceSubtreeTest, 2DActualSubtree) {
     expected(12) = morton.encode({6, 2}, 3);
     
     std::sort(expected.data(), expected.data() + expected.size());
-    
-    ASSERT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
-    for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
+
+    EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
+    for (size_t i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
         EXPECT_EQ(balanced_tree(i), expected(i))
           << "expected=" << morton.decode(expected(i)) 
           << ", actual=" << morton.decode(balanced_tree(i));

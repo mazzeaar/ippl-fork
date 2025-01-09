@@ -68,8 +68,6 @@ TEST(RipplePropagation, TestTest) {
     OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0}, real_coordinate_template<Dim>{1, 1}));
     Morton<Dim> morton(max_depth);
 
-    morton_code root = 0;
-
     Kokkos::View<morton_code*> tree_view("tree_view", 10);
     tree_view(0) = morton.encode({0, 0}, 2);
     tree_view(1) = morton.encode({2, 0}, 2);
@@ -106,10 +104,9 @@ TEST(RipplePropagation, TestTest) {
     std::sort(expected.data(), expected.data() + expected.size());
     
     EXPECT_EQ(expected.size(), balanced_tree.size()) << "Sizes dont match!";
-    for (int i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
-        ASSERT_EQ(balanced_tree(i), expected(i))
-          << "expected=" << morton.decode(expected(i)) 
-          << ", actual=" << morton.decode(balanced_tree(i));
+    for (size_t i = 0; i < std::min(expected.size(), balanced_tree.size()); ++i) {
+        EXPECT_EQ(balanced_tree(i), expected(i)) << "expected=" << morton.decode(expected(i))
+                                                 << ", actual=" << morton.decode(balanced_tree(i));
     }
 }
 
