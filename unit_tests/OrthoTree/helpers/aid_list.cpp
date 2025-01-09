@@ -207,7 +207,7 @@ TEST(AidListTest, ConstructorTest) {
 
         // the sum of the number of octants on each rank should be equal to the total number of
         // octants
-        ASSERT_EQ(total_num_octants, gathered_particles.getTotalNum());
+        EXPECT_EQ(total_num_octants, gathered_particles.getTotalNum());
 
         std::cout << "actualy Rank " << Comm->rank() << " has " << local_size << " octants"
                   << std::endl;
@@ -242,7 +242,7 @@ TEST(AidListTest, ConstructorTest) {
 
     // #### validate the gathered AidList ####
     if (Comm->rank() == 0) {
-        ASSERT_TRUE(is_sorted(all_octants)) << "AidList is not sorted on rank " << Comm->rank();
+        EXPECT_TRUE(is_sorted(all_octants)) << "AidList is not sorted on rank " << Comm->rank();
 
         std::vector<morton_code> all_octants_naive;
         std::vector<size_t> all_particle_ids_naive;

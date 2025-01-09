@@ -37,6 +37,8 @@ namespace ippl {
 
         Kokkos::View<morton_code*> tree_view = build_tree_from_octants(octants);
 
+       // octants_to_file(tree_view);
+       // print_stats(tree_view, particles);
         IpplTimings::stopTimer(buildTreeTimer);
 
         octants_to_file(tree_view);

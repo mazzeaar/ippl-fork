@@ -37,14 +37,17 @@ add_test_with_gtest(aid_list_test helpers/aid_list.cpp)
 add_test_with_gtest(parallel_tree_test parallel_construction/algo5.cpp)
 add_test_with_gtest(linearise_test parallel_construction/algo8.cpp)
 add_test_with_gtest(complete_region_test parallel_construction/algo2.cpp)
+#add_test_with_gtest(block_partition parallel_construction/algo4.cpp)
 
 add_test_with_gtest(parallel_construction_2 parallel_construction/full_test/2_ranks.cpp)
 add_test_with_gtest(parallel_construction_4 parallel_construction/full_test/4_ranks.cpp)
 add_test_with_gtest(parallel_construction_8 parallel_construction/full_test/8_ranks.cpp)
 
 
-# paralell balancing tests
-# TODO: 
+add_test_with_gtest(balance_subtree balancing/algo07.cpp)
+add_test_with_gtest(complete_subtree balancing/algo10.cpp)
+add_test_with_gtest(ripple_prop balancing/algo09.cpp)
+add_test_with_gtest(balancing balancing/algo11.cpp)
 
 # vi: set et ts=4 sw=4 sts=4:
 # Local Variables:

@@ -183,6 +183,8 @@ static void define_arguments() {
 
     ArgParser::add_argument<std::string>("parallel", "true",
                                          "true for parallel, false for sequential run");
+    ArgParser::add_argument<std::string>("balance", "true", "true to enable balancing");
+
     ArgParser::add_argument<std::string>("visualize_helper", "true", 
                                          "Enables the replicate this run message");
 }
@@ -244,6 +246,7 @@ void run_experiment() {
     const size_t log_level          = ArgParser::get<size_t>("log_level");
     const bool enable_stats         = ArgParser::get<bool>("print_stats");
     const bool run_parallel         = ArgParser::get<bool>("parallel");
+    const bool balance_tree         = ArgParser::get<bool>("balance");
 
     tree.setVisualisation(enable_visualisation);
     tree.setLogLevel(log_level);
@@ -252,10 +255,20 @@ void run_experiment() {
     auto particles = initializeParticles<Dim>();
 
     auto begin = std::chrono::high_resolution_clock::now();
-    if (run_parallel)
-        tree.build_tree(particles);
-    else
-        tree.build_tree_naive(particles);
+
+    if (balance_tree) {
+        if (run_parallel) {
+            tree.balance_tree(particles);
+        } else {
+            tree.balance_tree_naive(particles);
+        }
+    } else {
+        if (run_parallel) {
+            tree.build_tree(particles);
+        } else {
+            tree.build_tree_naive(particles);
+        }
+    }
 
     if (Comm->rank() == 0) {
         auto end      = std::chrono::high_resolution_clock::now();

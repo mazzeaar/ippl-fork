@@ -14,7 +14,6 @@ namespace ippl {
 */
 
 namespace ippl {
-
     Kokkos::View<morton_code*> remove_duplicates(Kokkos::View<morton_code*> input_view) {
         const size_t input_size = input_view.extent(0);
 
@@ -79,6 +78,9 @@ namespace ippl {
         auto linearised_octants   = linearise_octants(deduplicated_octants);
 
         auto partitioned_octants      = partition(linearised_octants);
+
+        std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": partitioned_octants = {";
+
         const size_t partitioned_size = partitioned_octants.extent(0);
 
         morton_code push_front_buff = 0;
@@ -89,7 +91,8 @@ namespace ippl {
                 morton_helper.get_nearest_common_ancestor(dfd_root, partitioned_octants(0));
 
             push_front_buff = morton_helper.get_first_child(A_finest);
-        } else if (world_rank == world_size - 1) {
+        }
+        if (world_rank == world_size - 1) {
             const morton_code dld_root = morton_helper.get_deepest_last_descendant(morton_code(0));
             const morton_code A_finest = morton_helper.get_nearest_common_ancestor(
                 dld_root, partitioned_octants(partitioned_size - 1));
@@ -165,7 +168,6 @@ namespace ippl {
         }
 
         IpplTimings::stopTimer(completeTreeTimer);
-
         return R_view;
     }
 }  // namespace ippl
