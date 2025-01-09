@@ -355,7 +355,7 @@ namespace ippl {
             auto max = *std::max_element(current_coords.begin(), current_coords.end());
             // if we produce big coordinates due to exiting the domain at the it's maximum
             // or integer underflow, we skip this key 
-            if (max >= (1 << max_depth)) {
+            if (max >= unsigned(1 << max_depth)) {
                 continue;
             }
             neighbors(i) = encode(current_coords, neighbor_level);
