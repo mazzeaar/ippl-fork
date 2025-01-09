@@ -705,7 +705,6 @@ namespace ippl {
         Kokkos::View<size_t*> result("result", octant_container.size());
         for (size_t i = 0; i < octant_container.size(); ++i) {
             result(i) = std::min(getNumParticlesInOctant(octant_container[i]), max_particles);
-            total_weight += result(i);
         }
 
         IpplTimings::stopTimer(timer);
