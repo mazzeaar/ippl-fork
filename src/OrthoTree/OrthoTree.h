@@ -88,7 +88,6 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> build_tree_naive(particle_t const& particles);
 
-#pragma region paralell construction
         /**
          * ALGO 1
          *
@@ -156,10 +155,6 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
 
-#pragma endregion  // paralell construction
-
-#pragma region balancing
-
         Kokkos::View<morton_code*> algo6(morton_code octant_N, morton_code descendant_L);
 
         Kokkos::View<morton_code*> algo7(morton_code octant_N,
@@ -172,11 +167,6 @@ namespace ippl {
 
         Kokkos::View<morton_code*> algo11(Kokkos::View<morton_code*> distributed_complete_tree_L);
 
-#pragma endregion  // balancing
-
-#pragma region helpers
-
-        
         /**
          * @brief Compares the following aspects of the trees:
          * - n_particles
@@ -190,8 +180,6 @@ namespace ippl {
          * @return false
          */
         bool operator==(const OrthoTree& other);
-
-#pragma endregion  // helpers
 
         /**
          * @brief Constructs a tree in each octant inside the given container.
@@ -207,8 +195,6 @@ namespace ippl {
         void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
 
     public:
-#pragma region print_helpers
-
         void print_stats(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
             if (!enable_print_stats) {
                 return;
@@ -262,7 +248,7 @@ namespace ippl {
             }
         }
 
-        void print_stats_seq(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
+        void print_stats_seq(Kokkos::View<morton_code*>& tree_view) {
             size_t total_particles = 0;
             for (size_t i = 0; i < tree_view.size(); ++i) {
                 auto num_particles = this->aid_list_m.getNumParticlesInOctant(tree_view[i]);
@@ -346,8 +332,6 @@ namespace ippl {
             file.close();
         }
     };
-#pragma endregion  // print_helpers
-
 }  // namespace ippl
 
 #include "OrthoTree.hpp"

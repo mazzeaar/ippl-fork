@@ -55,7 +55,7 @@ namespace ippl {
                         ++index;
                     }
                 });
-int a;
+
         Kokkos::parallel_for(
             "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
                 output_view(output_size - 1) = input_view(input_view.extent(0) - 1);
@@ -110,11 +110,15 @@ int a;
         const size_t R_base_size = 100;
         Kokkos::View<morton_code*> R_view("algo3::R_view", R_base_size);
 
+        auto local_complete_region = [this](morton_code a, morton_code b) {
+            return this->complete_region(a, b);
+        };
+        
         size_t R_index     = 0;
         auto insert_into_R = KOKKOS_LAMBDA(Kokkos::View<morton_code*> R_view, size_t R_index,
                                            morton_code octant_a, morton_code octant_b)
                                  ->size_t {
-            const auto complete_region        = this->complete_region(octant_a, octant_b);
+            const auto complete_region        = local_complete_region(octant_a, octant_b);
             const size_t complete_region_size = complete_region.extent(0);
             const size_t additional_octants   = complete_region_size + 1;
             const size_t remaining_space      = R_view.extent(0) - R_index;
