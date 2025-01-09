@@ -99,7 +99,9 @@ namespace ippl {
                 continue;
             }
 
-            for (morton_code child_octant : morton_helper.get_children(cur_octant)) {
+            auto children = morton_helper.get_children(cur_octant);
+            auto children_span = std::span(children.data(), children.size());
+            for (morton_code child_octant : children_span) {
                 stack.push(child_octant);
             }
         }
