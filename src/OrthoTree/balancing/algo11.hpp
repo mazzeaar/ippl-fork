@@ -290,7 +290,7 @@ namespace ippl {
         size_t offset = 0;
         // scan the window of each rank
         for (size_t source_rank = 0; source_rank < world_size; ++source_rank) {
-            if (source_rank == world_rank || (window_sizes(source_rank) == 0)) {
+            if (source_rank == world_rank) {
                 offsets(source_rank) = offset;
                 continue;
             }
@@ -637,7 +637,6 @@ namespace ippl {
 
                 if (world_rank != 0) {
                     size_window.get(&target_idx, target_rank, world_rank-1);
-                    size_window.fence(0);
                 }
                 size_window.fence(0);
                 if (start != end) {
