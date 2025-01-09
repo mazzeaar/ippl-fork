@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <span>
 #include <cmath>
 #include "MortonHelper.h"
 
@@ -74,7 +75,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_parent_at_level(morton_code code, morton_code depth) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_parent_at_level(morton_code code, morton_code depth) const
     {
         assert(code != morton_code(0) && "root has not parent");
 
@@ -95,11 +96,15 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const {
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_children(morton_code code) const {
         Kokkos::View<morton_code*> children("children", n_children);
-        Kokkos::parallel_for("SetChildren", n_children, KOKKOS_LAMBDA(const size_t i) {
-            children(i) = get_nth_child(code, i);
-        });
+
+        {
+            auto local_code = code;
+            Kokkos::parallel_for("SetChildren", n_children, KOKKOS_LAMBDA(const size_t i) {
+                children(i) = get_nth_child(local_code, i);
+            });
+        }
 
         return children;
     }
@@ -184,7 +189,7 @@ namespace ippl {
     }
 
     template<size_t Dim>
-    inline morton_code Morton<Dim>::get_nth_descendant(morton_code code, const size_t level, size_t n) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_nth_descendant(morton_code code, const size_t level, size_t n) const
     {
         assert(level >= get_depth(code) && "can't get descendants at a coarser level than the current node!");
         assert(level <= max_depth && "can't get descendants at a level larger than max_depth");
@@ -256,21 +261,21 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_sibling(morton_code a, morton_code b) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::is_sibling(morton_code a, morton_code b) const {
         // i think its faster if we leave this out (no branching)
         // if (get_depth(a) != get_depth(b)) return false;
         return get_parent(a) == get_parent(b);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_nth_child(morton_code code, size_t n) const {
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_nth_child(morton_code code, size_t n) const {
         assert(n < n_children && "can't get child with index larger than n_children");
         assert(get_depth(code) < max_depth && "can't get children at the deepest level");
         return get_first_child(code) + n * get_step_size(get_first_child(code));
     }
 
     template <size_t Dim>
-    inline int Morton<Dim>::get_child_index(morton_code parent, morton_code child) const {
+    KOKKOS_INLINE_FUNCTION int Morton<Dim>::get_child_index(morton_code parent, morton_code child) const {
         if (get_parent(child) != parent) return -1;
 
         const morton_code step = get_step_size(child);
@@ -278,9 +283,8 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_search_keys(morton_code code) const {
-        vector_t<morton_code> keys;
-        keys.reserve(n_children - 1);
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_search_keys(morton_code code) const {
+        Kokkos::View<morton_code*> keys("Keys", n_children - 1);
 
         int index = get_child_index(get_parent(code), code);
         assert(index != -1 && "code is not a child of its parent");
@@ -318,19 +322,19 @@ namespace ippl {
             if (max >= max_coord ) {
                 continue;
             } 
-            keys.push_back(encode(current_coords, max_depth));
+            keys(i) = encode(current_coords, max_depth);
         }
 
         return keys;
     }
 
     template<size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_neighbors(const morton_code code,
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_neighbors(const morton_code code,
                                                    const size_t neighbor_level) const {
         assert(neighbor_level <= max_depth && "Cant go below max_depth!");
 
         grid_coordinate coords = decode(code);
-        vector_t<morton_code> neighbors;
+        Kokkos::View<morton_code*> neighbors;
         size_t level_jump = 1 << (max_depth - neighbor_level);
         grid_coordinate offset{};
         grid_coordinate neighbor_offset(level_jump);
@@ -354,19 +358,19 @@ namespace ippl {
             if (max >= (1 << max_depth)) {
                 continue;
             }
-            neighbors.push_back(encode(current_coords, neighbor_level));
+            neighbors(i) = encode(current_coords, neighbor_level);
         }
         return neighbors;
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_insulation_layer(const morton_code code) const {
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_insulation_layer(const morton_code code) const {
         const size_t depth = get_depth(code);
         return get_neighbors(code, depth);
     }
 
     template<size_t Dim>
-    inline bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
         // if the codes are the same they are not neighbors
         if (a == b) return false;
 
@@ -378,8 +382,9 @@ namespace ippl {
         }
 
         auto neighbors = get_neighbors(a, get_depth(a));
+        auto neighbors_span = std::span(neighbors.data(), neighbors.size());        
 
-        for (auto& neighbor : neighbors) {
+        for (auto& neighbor : neighbors_span) {
           if (neighbor == b) {
             return true;
           }
@@ -393,7 +398,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
         return (child == parent) || is_ancestor(child, parent);
     }
 
