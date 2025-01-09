@@ -37,6 +37,8 @@ namespace ippl {
 
         Kokkos::View<morton_code*> tree_view = build_tree_from_octants(octants);
 
+       // octants_to_file(tree_view);
+       // print_stats(tree_view, particles);
         IpplTimings::stopTimer(buildTreeTimer);
 
         octants_to_file(tree_view);
@@ -50,8 +52,8 @@ namespace ippl {
         auto guesstimate_subtree_size = [this](morton_code octant) {
             // we can probably do some really smart guessing here
 
-            const size_t octant_depth = this->morton_helper.get_depth(octant);
-            const size_t remaining_depth = this->max_depth_m - octant_depth;
+            // const size_t octant_depth = this->morton_helper.get_depth(octant);
+            // const size_t remaining_depth = this->max_depth_m - octant_depth;
 
             // empirical guess this could be improved if it was constructed in some 
             // more clever way

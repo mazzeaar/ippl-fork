@@ -38,8 +38,7 @@ namespace ippl {
             "algo8::CountValidOctants", input_size - 1,
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 // no branching this way
-                int should_count = !local_morton_helper.is_ancestor(input_view(i + 1), input_view(i))
-                                    && input_view(i + 1) != input_view(i);
+                int should_count = !local_morton_helper.is_ancestor(input_view(i + 1), input_view(i));
                 local_count += static_cast<size_t>(should_count);
             },
             count);
@@ -50,7 +49,7 @@ namespace ippl {
 
         Kokkos::parallel_scan(
                 "algo8:AddRelevantOctants", input_size - 1, KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
-                    if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i)) && input_view(i+1) != input_view(i)) {
+                    if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i))) {
                         if (final) {
                             output_view(index) = input_view(i);
                         }

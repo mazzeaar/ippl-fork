@@ -14,7 +14,6 @@ namespace ippl {
 */
 
 namespace ippl {
-
     Kokkos::View<morton_code*> remove_duplicates(Kokkos::View<morton_code*> input_view) {
         const size_t input_size = input_view.extent(0);
 
@@ -55,7 +54,7 @@ namespace ippl {
                         ++index;
                     }
                 });
-int a;
+
         Kokkos::parallel_for(
             "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
                 output_view(output_size - 1) = input_view(input_view.extent(0) - 1);
@@ -79,6 +78,9 @@ int a;
         auto linearised_octants   = linearise_octants(deduplicated_octants);
 
         auto partitioned_octants      = partition(linearised_octants);
+
+        std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": partitioned_octants = {";
+
         const size_t partitioned_size = partitioned_octants.extent(0);
 
         morton_code push_front_buff = 0;
@@ -89,7 +91,8 @@ int a;
                 morton_helper.get_nearest_common_ancestor(dfd_root, partitioned_octants(0));
 
             push_front_buff = morton_helper.get_first_child(A_finest);
-        } else if (world_rank == world_size - 1) {
+        }
+        if (world_rank == world_size - 1) {
             const morton_code dld_root = morton_helper.get_deepest_last_descendant(morton_code(0));
             const morton_code A_finest = morton_helper.get_nearest_common_ancestor(
                 dld_root, partitioned_octants(partitioned_size - 1));
@@ -110,11 +113,15 @@ int a;
         const size_t R_base_size = 100;
         Kokkos::View<morton_code*> R_view("algo3::R_view", R_base_size);
 
+        auto local_complete_region = [this](morton_code a, morton_code b) {
+            return this->complete_region(a, b);
+        };
+        
         size_t R_index     = 0;
         auto insert_into_R = KOKKOS_LAMBDA(Kokkos::View<morton_code*> R_view, size_t R_index,
                                            morton_code octant_a, morton_code octant_b)
                                  ->size_t {
-            const auto complete_region        = this->complete_region(octant_a, octant_b);
+            const auto complete_region        = local_complete_region(octant_a, octant_b);
             const size_t complete_region_size = complete_region.extent(0);
             const size_t additional_octants   = complete_region_size + 1;
             const size_t remaining_space      = R_view.extent(0) - R_index;
@@ -161,7 +168,6 @@ int a;
         }
 
         IpplTimings::stopTimer(completeTreeTimer);
-
         return R_view;
     }
 }  // namespace ippl

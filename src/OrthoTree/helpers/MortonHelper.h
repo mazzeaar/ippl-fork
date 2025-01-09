@@ -96,6 +96,17 @@ namespace ippl {
         KOKKOS_INLINE_FUNCTION morton_code get_parent(morton_code code) const;
 
         /**
+         * @brief Returns the code of this parent at depth
+         *
+         * @param code
+         *
+         * @param depth
+         *
+         * @return morton_code
+         */
+        inline morton_code get_parent_at_level(morton_code code, morton_code depth) const;
+
+        /**
          * @brief Returns a View filled with the (2^Dim) children of a node, in ascending order
          *
          * @param code
@@ -146,6 +157,17 @@ namespace ippl {
          * @return morton_code
          */
         KOKKOS_INLINE_FUNCTION morton_code get_last_descendant(morton_code code, const size_t level) const;
+        
+        /**
+         * @brief Returns the descendant of code at level level where each time
+         * we descend we take the n-th child where n=0 is the first descendant.
+         *
+         * @param code
+         * @param level
+         * @param n
+         * @return morton_code
+         */
+        inline morton_code get_nth_descendant(morton_code code, const size_t level, size_t n) const;
 
         /**
          * @brief Returns get_first_descendant(code, max_depth - get_depth(code));
@@ -184,6 +206,15 @@ namespace ippl {
         KOKKOS_INLINE_FUNCTION bool is_ancestor(morton_code child, morton_code parent) const;
 
         /**
+         * @brief Checks whether the given parent is an ancestor or equal to the given child
+         *
+         * @param child the child code
+         * @param parent the parent code
+         * @return true if parent is ancestor of child
+         */
+        inline bool does_overlap(morton_code child, morton_code parent) const;
+
+        /**
          * @brief Checks whether the given child is a descendant of the given parents
          *
          * @param child the child code
@@ -199,6 +230,98 @@ namespace ippl {
          * @return morton_code
          */
         KOKKOS_INLINE_FUNCTION morton_code get_step_size(morton_code code) const;
+
+        /**
+         * @brief
+         *
+         * @param a
+         * @param b
+         * @return true
+         * @return false
+         */
+        inline bool is_sibling(morton_code a, morton_code b) const;
+
+        /**
+         * @brief Returns the n-th child of a code
+         *
+         * @param code
+         * @param n the index of the child 
+         *
+         *
+         * @return morton_code
+         * @PRE n < 2^Dim and depth(code) < max_depth
+         *
+         */
+        inline morton_code get_nth_child(morton_code code, size_t n) const;
+
+        /**
+         * @brief Returns which child the child code is of the parent code 
+         * if the parent code isn't the parent this returns -1
+         *
+         * @param parent
+         * @param child
+         * @return int
+         */
+        inline int get_child_index(morton_code parent, morton_code child) const;
+
+        /**
+         * @brief finds the morton codes at lowest level that will allow us to 
+         * find neighbors of the given code 
+         */
+        inline vector_t<morton_code> get_search_keys(morton_code code) const;
+
+        inline vector_t<morton_code> get_neighbors(const morton_code code,
+                                                   const size_t neighbor_level) const;
+
+        inline vector_t<morton_code> get_insulation_layer(const morton_code code) const;
+
+        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
+
+        /**
+         * @brief
+         *
+         * @param a
+         * @param b
+         * @return true
+         * @return false
+         */
+        inline bool is_sibling(morton_code a, morton_code b) const;
+
+        /**
+         * @brief Returns the n-th child of a code
+         *
+         * @param code
+         * @param n the index of the child 
+         *
+         *
+         * @return morton_code
+         * @PRE n < 2^Dim and depth(code) < max_depth
+         *
+         */
+        inline morton_code get_nth_child(morton_code code, size_t n) const;
+
+        /**
+         * @brief Returns which child the child code is of the parent code 
+         * if the parent code isn't the parent this returns -1
+         *
+         * @param parent
+         * @param child
+         * @return int
+         */
+        inline int get_child_index(morton_code parent, morton_code child) const;
+
+        /**
+         * @brief finds the morton codes at lowest level that will allow us to 
+         * find neighbors of the given code 
+         */
+        inline vector_t<morton_code> get_search_keys(morton_code code) const;
+
+        inline vector_t<morton_code> get_neighbors(const morton_code code,
+                                                   const size_t neighbor_level) const;
+
+        inline vector_t<morton_code> get_insulation_layer(const morton_code code) const;
+
+        inline bool are_neighbors(morton_code code_a, morton_code code_b) const;
 
     private:
         const size_t max_depth;

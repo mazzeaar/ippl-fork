@@ -167,10 +167,6 @@ TEST(AidListTest, ConstructorTest) {
         return std::is_sorted(container.data(), container.data() + container.size());
     };
 
-    auto sort = [](auto& container) {
-        std::sort(container.data(), container.data() + container.size());
-    };
-
     auto get_span = [](auto& container) {
         return std::span(container.data(), container.size());
     };
@@ -208,7 +204,7 @@ TEST(AidListTest, ConstructorTest) {
 
         // the sum of the number of octants on each rank should be equal to the total number of
         // octants
-        ASSERT_EQ(total_num_octants, gathered_particles.getTotalNum());
+        EXPECT_EQ(total_num_octants, gathered_particles.getTotalNum());
 
         std::cout << "actualy Rank " << Comm->rank() << " has " << local_size << " octants"
                   << std::endl;
@@ -243,7 +239,7 @@ TEST(AidListTest, ConstructorTest) {
 
     // #### validate the gathered AidList ####
     if (Comm->rank() == 0) {
-        ASSERT_TRUE(is_sorted(all_octants)) << "AidList is not sorted on rank " << Comm->rank();
+        EXPECT_TRUE(is_sorted(all_octants)) << "AidList is not sorted on rank " << Comm->rank();
 
         std::vector<morton_code> all_octants_naive;
         std::vector<size_t> all_particle_ids_naive;
@@ -388,19 +384,21 @@ TEST(AidListTest, NumParticlesInOctantTest) {
         size_t expected_total_particles;
     };
 
-    auto run_test = [&](TestStruct& test) {
-        EXPECT_EQ(aid_list.getLowerBoundIndex(test.octant), test.expected_lower_bound)
-            << "Failed lower bound test for octant: " << test.octant;
+    /*
+       auto run_test = [&](TestStruct& test) {
+       EXPECT_EQ(aid_list.getLowerBoundIndex(test.octant), test.expected_lower_bound)
+       << "Failed lower bound test for octant: " << test.octant;
 
-        EXPECT_EQ(aid_list.getUpperBoundIndexExclusive(test.octant), test.expected_upper_bound_excl)
-            << "Failed exclusive upper bound test for octant: " << test.octant;
+       EXPECT_EQ(aid_list.getUpperBoundIndexExclusive(test.octant), test.expected_upper_bound_excl)
+       << "Failed exclusive upper bound test for octant: " << test.octant;
 
-        EXPECT_EQ(aid_list.getUpperBoundIndexInclusive(test.octant), test.expected_upper_bound_incl)
-            << "Failed inclusive upper bound test for octant: " << test.octant;
+       EXPECT_EQ(aid_list.getUpperBoundIndexInclusive(test.octant), test.expected_upper_bound_incl)
+       << "Failed inclusive upper bound test for octant: " << test.octant;
 
-        EXPECT_EQ(aid_list.getNumParticlesInOctant(test.octant), test.expected_total_particles)
-            << "Failed particle count test for octant: " << test.octant;
-    };
+       EXPECT_EQ(aid_list.getNumParticlesInOctant(test.octant), test.expected_total_particles)
+       << "Failed particle count test for octant: " << test.octant;
+       };
+       */
 
     std::vector<TestStruct> tests_to_run = {// root node
                                             {.octant                    = 0b000,
@@ -501,7 +499,6 @@ TEST(AidListTest, GetReqOctantsTest) {
         << ", but got: " << min_octant;
 }
 
-/**
  * @brief If this test fails, but only once then it was random chance, everything is ok.
  * You could just turn up the tolerance though:)
  */
