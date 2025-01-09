@@ -4,6 +4,8 @@
 #include <Kokkos_Pair.hpp>
 #include <Kokkos_Vector.hpp>
 #include <fstream>
+#include <span>
+#include <unordered_set>
 #include <vector>
 
 #include "OrthoTreeTypes.h"
@@ -80,6 +82,8 @@ namespace ippl {
 
         size_t getMaxDepth() const { return max_depth_m; }
 
+        AidList<Dim>* getAidList() { return &this->aid_list_m; }
+
         /**
          * @brief This is the most basic way to build a tree. Its inefficien, but it (should) be
          * correct. Can be used to compare against parallel implementations later on.
@@ -98,6 +102,26 @@ namespace ippl {
          * @return Kokkos::vector<morton_code>
          */
         Kokkos::View<morton_code*> build_tree(particle_t const& particles);
+
+        Kokkos::View<morton_code*> balance_tree_naive(Kokkos::View<morton_code*> tree) {
+            auto balanced_tree = algo7(morton_code(0), tree);
+            octants_to_file(balanced_tree);
+            return balanced_tree;
+        }
+
+        Kokkos::View<morton_code*> balance_tree_naive(particle_t const& particles) {
+            return balance_tree_naive(build_tree_naive(particles));
+        }
+
+        Kokkos::View<morton_code*> balance_tree(Kokkos::View<morton_code*> tree) {
+            auto balanced_tree = algo11(tree);
+            octants_to_file(balanced_tree);
+            return balanced_tree;
+        }
+
+        Kokkos::View<morton_code*> balance_tree(particle_t const& particles) {
+            return balance_tree(build_tree(particles));
+        }
 
         /**
          * ALGO 2
@@ -127,6 +151,8 @@ namespace ippl {
          * @return block partitioned octree, and unpartitioned_tree is re-distributed
          **/
         Kokkos::View<morton_code*> block_partition(morton_code min_octant, morton_code max_octant);
+        std::pair<Kokkos::View<morton_code*>, Kokkos::View<morton_code*>> algo4_11(
+            Kokkos::View<morton_code*> F_view);
 
         /**
          * ALGO 5
@@ -155,6 +181,10 @@ namespace ippl {
          */
         Kokkos::View<morton_code*> linearise_octants(Kokkos::View<morton_code*> const& octants);
 
+        template <size_t algo_nr>
+        Kokkos::View<morton_code*> algo_7_10_base(const morton_code octant_N,
+                                                  Kokkos::View<morton_code*> partial_descendants_L);
+
         Kokkos::View<morton_code*> algo6(morton_code octant_N, morton_code descendant_L);
 
         Kokkos::View<morton_code*> algo7(morton_code octant_N,
@@ -162,7 +192,7 @@ namespace ippl {
 
         Kokkos::View<morton_code*> algo9(Kokkos::View<morton_code*> sorted_incomplete_tree_L);
 
-        Kokkos::View<morton_code*> algo10(morton_code octant_N,
+        Kokkos::View<morton_code*> algo10(const morton_code octant_N,
                                           Kokkos::View<morton_code*> partial_descendants_L);
 
         Kokkos::View<morton_code*> algo11(Kokkos::View<morton_code*> distributed_complete_tree_L);
@@ -193,6 +223,11 @@ namespace ippl {
          * to the needed size and apply 'shrink_to_fit' after finishing.
          */
         void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
+
+        /**
+         * @brief Checks whether the tree is balanced
+         */
+        bool is_balanced(const Kokkos::View<morton_code*>& tree_view) const;
 
     public:
         void print_stats(Kokkos::View<morton_code*>& tree_view, const auto& particles) {
@@ -346,9 +381,9 @@ namespace ippl {
 
 // implementations of balancing algos
 // #include "balancing/algo06.hpp"
-// #include "balancing/algo07.hpp"
-// #include "balancing/algo09.hpp"
-// #include "balancing/algo10.hpp"
-// #include "balancing/algo11.hpp"
+#include "balancing/algo07.hpp"
+#include "balancing/algo09.hpp"
+#include "balancing/algo10.hpp"
+#include "balancing/algo11.hpp"
 
 #endif  // ORTHOTREE_GUARD

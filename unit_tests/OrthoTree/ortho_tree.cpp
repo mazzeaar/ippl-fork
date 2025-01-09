@@ -41,3 +41,52 @@ TEST(OrthoTreeTest, BuildSimpleQuadTree)
     */
 }
 
+TEST(OrthoTreeTest, IsBalancedTest) {
+    constexpr size_t Dim = 2;
+    size_t max_depth = 3;
+    OrthoTree<Dim> tree(max_depth, 2, BoundingBox<Dim>(real_coordinate_template<Dim>{0, 0}, real_coordinate_template<Dim>{1, 1}));
+    Morton<Dim> morton(max_depth);
+
+    Kokkos::View<morton_code*> tree_view("tree_view", 10);
+    tree_view(0) = morton.encode({0, 0}, 2);
+    tree_view(1) = morton.encode({2, 0}, 2);
+    tree_view(2) = morton.encode({0, 2}, 2);
+    tree_view(3) = morton.encode({2, 2}, 3);
+    tree_view(4) = morton.encode({2, 3}, 3);
+    tree_view(5) = morton.encode({3, 2}, 3);
+    tree_view(6) = morton.encode({3, 3}, 3);
+    tree_view(7) = morton.encode({0, 4}, 1);
+    tree_view(8) = morton.encode({4, 0}, 1);
+    tree_view(9) = morton.encode({4, 4}, 1);
+
+    EXPECT_FALSE( tree.is_balanced(tree_view) );
+
+
+    Kokkos::View<morton_code*> tree_view2("tree_view2", 7);
+    tree_view2(0) = morton.encode({0, 0}, 2);
+    tree_view2(1) = morton.encode({2, 0}, 2);
+    tree_view2(2) = morton.encode({0, 2}, 2);
+    tree_view2(3) = morton.encode({2, 2}, 2);
+    tree_view2(4) = morton.encode({0, 4}, 1);
+    tree_view2(5) = morton.encode({4, 0}, 1);
+    tree_view2(6) = morton.encode({4, 4}, 1);
+
+    EXPECT_TRUE( tree.is_balanced(tree_view2) );
+}
+
+// this is required to test the orthotree, as it depends on ippl
+int main(int argc, char** argv) {
+    // Initialize MPI and IPPL
+    ippl::initialize(argc, argv, MPI_COMM_WORLD);
+
+    // Initialize Google Test
+    ::testing::InitGoogleTest(&argc, argv);
+
+    // Run all tests
+    int result = RUN_ALL_TESTS();
+
+    // Finalize IPPL and MPI
+    ippl::finalize();
+
+    return result;
+}

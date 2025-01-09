@@ -507,6 +507,9 @@ namespace ippl {
                 morton_code lower_range = std::max(min_octant, lower_bound_octant);
                 morton_code upper_range = std::min(max_octant, upper_bound_octant);
 
+                // the upper range has to be one larger that what we want to copy
+                if(i == world_size-1) ++upper_range;
+
                 // no need to send to ourselves
                 if (i == world_rank) {
                     ranges(2 * i)     = lower_range;
