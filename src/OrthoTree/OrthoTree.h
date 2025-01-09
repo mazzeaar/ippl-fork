@@ -287,7 +287,7 @@ namespace ippl {
             Kokkos::View<real_coordinate*,Kokkos::HostSpace::memory_space> R_host("R_host", N);
             Kokkos::deep_copy(R_host, particles.R.getView());
             for (size_t i = 0; i < N; ++i) {
-                os << R_host(i) << std::endl;
+                os << i << " " << R_host(i) << std::endl;
             }
 
 
