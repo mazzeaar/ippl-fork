@@ -13,6 +13,7 @@ namespace ippl {
         const size_t world_rank;
         const size_t world_size;
         const size_t max_depth;
+        const size_t max_particles;
         const Morton<Dim> morton_helper;
 
         Inform logger;
@@ -28,7 +29,7 @@ namespace ippl {
         Kokkos::View<morton_code*> bucket_borders;
 
     public:
-        AidList(size_t max_depth);
+        AidList(size_t max_depth, size_t max_particles);
 
         void setLogLevel(int level) { logger.setOutputLevel(level); }
         void setLogOutput(bool enable) { logger.on(enable); }

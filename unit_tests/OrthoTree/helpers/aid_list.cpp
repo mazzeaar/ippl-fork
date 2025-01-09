@@ -121,7 +121,8 @@ TEST(AidListTest, ChecksIfGatheredCorrectly) {
     // #### SETUP ####
     static constexpr size_t Dim = 3;
     const size_t max_depth      = 5;
-    AidList<Dim> aid_list(max_depth);
+    const size_t max_particles = 3;
+    AidList<Dim> aid_list(max_depth, max_particles);
     // #### SETUP DONE ####
 
     auto gathered_particles   = getParticles<Dim>(100, 0.0, 1.0);
@@ -147,13 +148,14 @@ TEST(AidListTest, ConstructsSortedTest) {
     const double min_bounds           = 0.0;
     const double max_bounds           = 1.0;
     const size_t n_particles_per_proc = 100;
+    const size_t max_particles = 3;
 
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds, min_bounds},
                                  {max_bounds, max_bounds, max_bounds});
 
     auto gathered_particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
 
-    AidList<Dim> working_aid_list(max_depth);
+    AidList<Dim> working_aid_list(max_depth, max_particles);
     working_aid_list.initialize(root_bounds, gathered_particles);
 
     // #### SETUP DONE ####
@@ -186,13 +188,14 @@ TEST(AidListTest, ConstructorTest) {
     const double min_bounds           = 0.0;
     const double max_bounds           = 1.0;
     const size_t n_particles_per_proc = 100;
+    const size_t max_particles = 3;
 
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds, min_bounds},
                                  {max_bounds, max_bounds, max_bounds});
 
     auto gathered_particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
 
-    AidList<Dim> working_aid_list(max_depth);
+    AidList<Dim> working_aid_list(max_depth, max_particles);
     // #### SETUP DONE ####
 
     working_aid_list.initialize(root_bounds, gathered_particles);
@@ -250,7 +253,7 @@ TEST(AidListTest, ConstructorTest) {
 
         // initialise the naive implementation
         {
-            AidList<Dim> aid_list(max_depth);
+            AidList<Dim> aid_list(max_depth, max_particles);
             aid_list.initialize_from_rank(max_depth, root_bounds, gathered_particles);
             aid_list.sort_local_aidlist();
 
@@ -341,11 +344,12 @@ TEST(AidListTest, CorrectConstructionTest2D) {
     const double min_bounds           = 0.0;
     const double max_bounds           = 1.0;
     const size_t n_particles_per_proc = 100;
+    const size_t max_particles = 3;
 
     auto particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
     particles      = distributeToCorners2D(particles, min_bounds, max_bounds);
 
-    AidList<Dim> aid_list(max_depth);
+    AidList<Dim> aid_list(max_depth, max_particles);
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds}, {max_bounds, max_bounds});
 
     aid_list.initialize(root_bounds, particles);
@@ -367,12 +371,13 @@ TEST(AidListTest, NumParticlesInOctantTest) {
     const double min_bounds           = 0.0;
     const double max_bounds           = 1.0;
     const size_t n_particles_per_proc = 100;
+    const size_t max_particles = 3;
     const size_t total_num_particles  = n_particles_per_proc * Comm->size();
 
     auto particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
     particles      = distributeToCorners2D(particles, min_bounds, max_bounds);
 
-    AidList<Dim> aid_list(max_depth);
+    AidList<Dim> aid_list(max_depth, max_particles);
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds}, {max_bounds, max_bounds});
     Morton<Dim> morton_helper(max_depth);
 
@@ -465,11 +470,12 @@ TEST(AidListTest, GetReqOctantsTest) {
     const double min_bounds           = 0.0;
     const double max_bounds           = 1.0;
     const size_t n_particles_per_proc = 100;
+    const size_t max_particles = 3;
 
     auto particles = getParticles<Dim>(n_particles_per_proc, min_bounds, max_bounds);
     particles      = distributeToCorners2D(particles, min_bounds, max_bounds);
 
-    AidList<Dim> aid_list(max_depth);
+    AidList<Dim> aid_list(max_depth, max_particles);
     BoundingBox<Dim> root_bounds({min_bounds, min_bounds}, {max_bounds, max_bounds});
 
     aid_list.initialize(root_bounds, particles);
