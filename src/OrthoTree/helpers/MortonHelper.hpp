@@ -333,16 +333,19 @@ namespace ippl {
                                                    const size_t neighbor_level) const {
         assert(neighbor_level <= max_depth && "Cant go below max_depth!");
 
+        // we iterate over the 3^Dim hypercube surrounding the node
+        size_t n = std::pow(3, Dim);
+
         grid_coordinate coords = decode(code);
-        Kokkos::View<morton_code*> neighbors;
+        Kokkos::View<morton_code*> neighbors("neighbors", n - 1);
         size_t level_jump = 1 << (max_depth - neighbor_level);
         grid_coordinate offset{};
         grid_coordinate neighbor_offset(level_jump);
 
         // we iterate over the 3^Dim hypercube surrounding the node 
-        for (size_t i = 0; i < std::pow(3, Dim); ++i) {
+        for (size_t i = 0; i < n; ++i) {
             // we skip the center as we are only interested in the neighbors
-            if (i == (size_t)std::pow(3, Dim) / 2)
+            if (i == n/2)
                 continue;
             for (size_t j = 0; j < Dim; ++j) {
                 int three_pow_j = std::pow(3, j);
