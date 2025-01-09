@@ -473,15 +473,6 @@ namespace ippl {
     // INPUT HAS TO BE SORTED
     template <size_t Dim>
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
-        std::cout << std::to_string(Comm->rank()) + ": starting algo11\n";
-
-        std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": L_view1 = {";
-        for (size_t i = 0; i < L_view.size(); i++) {
-            log_str += std::to_string(L_view(i));
-            if(i != L_view.size()-1) log_str += ", ";
-        }
-        log_str += "}\n";
-        std::cerr << log_str;
 
         IpplTimings::TimerRef algo11Timer = IpplTimings::getTimer("algo11");
         IpplTimings::startTimer(algo11Timer);
@@ -492,22 +483,6 @@ namespace ippl {
         // Kokkos::View<morton_code*> B_view = block_partition(L_view(0), L_view(L_view.size() - 1));
         auto [B_view, new_L_view] = algo4_11(L_view);
         L_view = new_L_view;
-
-        log_str = "Rank " + std::to_string(Comm->rank()) + ": B_view = {";
-        for (size_t i = 0; i < B_view.size(); i++) {
-            log_str += std::to_string(B_view(i));
-            if(i != B_view.size()-1) log_str += ", ";
-        }
-        log_str += "}\n";
-        std::cerr << log_str;
-
-        log_str = "Rank " + std::to_string(Comm->rank()) + ": L_view = {";
-        for (size_t i = 0; i < L_view.size(); i++) {
-            log_str += std::to_string(L_view(i));
-            if(i != L_view.size()-1) log_str += ", ";
-        }
-        log_str += "}\n";
-        std::cerr << log_str;
 
         IpplTimings::stopTimer(algo11_B_view_Timer);
 
@@ -576,8 +551,6 @@ namespace ippl {
         auto G_view = initialise_G_view(this->morton_helper, B_view, F_view, max_depth_m);
 
         IpplTimings::stopTimer(algo11_G_view_Timer);
-
-        std::cout << std::to_string(Comm->rank()) + ": Starting with T_view\n";
 
         IpplTimings::TimerRef algo11_T_view_Timer = IpplTimings::getTimer("algo11_T_view");
         IpplTimings::startTimer(algo11_T_view_Timer);
@@ -681,7 +654,6 @@ namespace ippl {
         /**
          * Each rank should now have all the octants it needs
          */
-        std::cout << std::to_string(Comm->rank()) + ": Starting with K_view\n";
 
         IpplTimings::TimerRef algo11_K_view_Timer = IpplTimings::getTimer("algo11_K_view");
         IpplTimings::startTimer(algo11_K_view_Timer);
@@ -788,7 +760,6 @@ namespace ippl {
 
         auto conc_G_T_K = concatenateViews(G_view, concatenateViews(T_view , K_view));
 
-        std::cout << std::to_string(Comm->rank()) + ": Starting algo8\n";
         auto H_view = algo9(conc_G_T_K);
 
         IpplTimings::stopTimer(algo11_H_view_Timer);
@@ -796,13 +767,11 @@ namespace ippl {
         IpplTimings::TimerRef algo11_R_view_Timer = IpplTimings::getTimer("algo11_R_view");
         IpplTimings::startTimer(algo11_R_view_Timer);
 
-        std::cout << std::to_string(Comm->rank()) + ": Initializing R_view\n";
         auto R_view = initialise_R_view(this->morton_helper, B_view, H_view, F_view);
         R_view = linearise_octants(R_view);
 
         IpplTimings::stopTimer(algo11_R_view_Timer);
 
-        std::cout << std::to_string(Comm->rank()) + ": Done\n";
         assert(is_balanced(R_view));
 
         IpplTimings::stopTimer(algo11Timer);

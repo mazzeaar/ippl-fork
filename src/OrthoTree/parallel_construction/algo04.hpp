@@ -60,7 +60,7 @@ namespace ippl {
                 Kokkos::resize(source_data, window_sizes(source_rank));
             }
 
-            if(world_rank != 0) borders(source_rank-1) = source_data(0);
+            if(source_rank != world_size-1) borders(source_rank) = source_data(source_data.size()-1)+1;
             
             for(size_t i = 0; i < G.size(); i++){
                 const auto lower_bound_it =
@@ -86,7 +86,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    Kokkos::View<morton_code*> updateFview(Morton<Dim> morton_helper, Kokkos::View<morton_code*> F_view, Kokkos::View<morton_code*> bucket_borders) {
+    Kokkos::View<morton_code*> updateFview(Morton<Dim> morton_helper, Kokkos::View<morton_code*> F_view, Kokkos::View<morton_code*> bucket_borders, Kokkos::View<morton_code*> octants) {
         size_t world_size = Comm->size();
         size_t world_rank = Comm->rank();
         // holds min/max octant from each rank
@@ -98,8 +98,8 @@ namespace ippl {
 
         // number of octants this rank will receive
         size_t new_size_after_exchange = 0;
-        morton_code min_octant = F_view(0);
-        morton_code max_octant = F_view(F_view.size()-1);
+        morton_code min_octant = octants(0);
+        morton_code max_octant = morton_helper.get_deepest_last_descendant(octants(octants.size()-1));
 
         /**
          * Populate the ranges view with the min/max octant for each rank.
@@ -133,13 +133,15 @@ namespace ippl {
                 morton_code lower_range = std::max(min_octant, lower_bound_octant);
                 morton_code upper_range = std::min(max_octant, upper_bound_octant);
 
+                if(i == world_size-1) upper_range += 1;
+
                 // no need to send to ourselves
                 if (i == world_rank) {
                     ranges(2 * i)     = lower_range;
                     ranges(2 * i + 1) = upper_range;
                     continue;
                 }
-
+                
                 // find the range of octants that are in the current bucket
                 range_window.put(lower_range, i, 2 * world_rank);
                 range_window.put(upper_range, i, 2 * world_rank + 1);
@@ -416,7 +418,7 @@ namespace ippl {
         
         Kokkos::View<morton_code*> octants = partition(G, weights_view);
 
-        Kokkos::View<morton_code*> new_F_view = updateFview(this->morton_helper, F_view, borders);
+        Kokkos::View<morton_code*> new_F_view = updateFview(this->morton_helper, F_view, borders, octants);
 
         return std::make_pair(octants, new_F_view);
     }

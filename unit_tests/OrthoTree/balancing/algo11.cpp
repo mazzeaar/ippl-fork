@@ -311,7 +311,7 @@ TEST(BalancingTest, TestTest) {
     }
     */
     if(Comm->rank() == 0){
-        EXPECT_EQ(15, balanced_tree.size());
+        EXPECT_EQ(12, balanced_tree.size());
         EXPECT_EQ(morton.encode({0, 0}, 3), balanced_tree(0));
         EXPECT_EQ(morton.encode({2, 0}, 4), balanced_tree(1));
         EXPECT_EQ(morton.encode({3, 0}, 4), balanced_tree(2));
@@ -324,25 +324,25 @@ TEST(BalancingTest, TestTest) {
         EXPECT_EQ(morton.encode({4, 2}, 3), balanced_tree(9));
         EXPECT_EQ(morton.encode({6, 2}, 3), balanced_tree(10));
         EXPECT_EQ(morton.encode({0, 4}, 2), balanced_tree(11));
-        EXPECT_EQ(morton.encode({4, 4}, 3), balanced_tree(12));
-        EXPECT_EQ(morton.encode({6, 4}, 3), balanced_tree(13));
-        EXPECT_EQ(morton.encode({4, 6}, 3), balanced_tree(14));
     } else if(Comm->rank() == 1){
-        EXPECT_EQ(12, balanced_tree.size());
-        EXPECT_EQ(morton.encode({6, 6}, 4), balanced_tree(0));
-        EXPECT_EQ(morton.encode({7, 6}, 4), balanced_tree(1));
-        EXPECT_EQ(morton.encode({6, 7}, 4), balanced_tree(2));
-        EXPECT_EQ(morton.encode({7, 7}, 4), balanced_tree(3));
-        EXPECT_EQ(morton.encode({8, 0}, 2), balanced_tree(4));
-        EXPECT_EQ(morton.encode({12, 0}, 3), balanced_tree(5));
-        EXPECT_EQ(morton.encode({14, 0}, 4), balanced_tree(6));
-        EXPECT_EQ(morton.encode({15, 0}, 4), balanced_tree(7));
-        EXPECT_EQ(morton.encode({14, 1}, 4), balanced_tree(8));
-        EXPECT_EQ(morton.encode({15, 1}, 4), balanced_tree(9));
-        EXPECT_EQ(morton.encode({12, 2}, 3), balanced_tree(10));
-        EXPECT_EQ(morton.encode({14, 2}, 3), balanced_tree(11));
+        EXPECT_EQ(15, balanced_tree.size());
+        EXPECT_EQ(morton.encode({4, 4}, 3), balanced_tree(0));
+        EXPECT_EQ(morton.encode({6, 4}, 3), balanced_tree(1));
+        EXPECT_EQ(morton.encode({4, 6}, 3), balanced_tree(2));
+        EXPECT_EQ(morton.encode({6, 6}, 4), balanced_tree(3));
+        EXPECT_EQ(morton.encode({7, 6}, 4), balanced_tree(4));
+        EXPECT_EQ(morton.encode({6, 7}, 4), balanced_tree(5));
+        EXPECT_EQ(morton.encode({7, 7}, 4), balanced_tree(6));
+        EXPECT_EQ(morton.encode({8, 0}, 2), balanced_tree(7));
+        EXPECT_EQ(morton.encode({12, 0}, 3), balanced_tree(8));
+        EXPECT_EQ(morton.encode({14, 0}, 4), balanced_tree(9));
+        EXPECT_EQ(morton.encode({15, 0}, 4), balanced_tree(10));
+        EXPECT_EQ(morton.encode({14, 1}, 4), balanced_tree(11));
+        EXPECT_EQ(morton.encode({15, 1}, 4), balanced_tree(12));
+        EXPECT_EQ(morton.encode({12, 2}, 3), balanced_tree(13));
+        EXPECT_EQ(morton.encode({14, 2}, 3), balanced_tree(14));
     } else if(Comm->rank() == 2){
-        EXPECT_EQ(23, balanced_tree.size());
+        EXPECT_EQ(19, balanced_tree.size());
         EXPECT_EQ(morton.encode({8, 4}, 3), balanced_tree(0));
         EXPECT_EQ(morton.encode({10, 4}, 3), balanced_tree(1));
         EXPECT_EQ(morton.encode({8, 6}, 3), balanced_tree(2));
@@ -362,26 +362,26 @@ TEST(BalancingTest, TestTest) {
         EXPECT_EQ(morton.encode({10, 8}, 3), balanced_tree(16));
         EXPECT_EQ(morton.encode({8, 10}, 3), balanced_tree(17));
         EXPECT_EQ(morton.encode({10, 10}, 3), balanced_tree(18));
-        EXPECT_EQ(morton.encode({12, 8}, 3), balanced_tree(19));
-        EXPECT_EQ(morton.encode({14, 8}, 3), balanced_tree(20));
-        EXPECT_EQ(morton.encode({12, 10}, 4), balanced_tree(21));
-        EXPECT_EQ(morton.encode({13, 10}, 4), balanced_tree(22));
     } else if(Comm->rank() == 3){
-        EXPECT_EQ(14, balanced_tree.size());
-        EXPECT_EQ(morton.encode({12, 11}, 4), balanced_tree(0));
-        EXPECT_EQ(morton.encode({13, 11}, 4), balanced_tree(1));
-        EXPECT_EQ(morton.encode({14, 10}, 3), balanced_tree(2));
-        EXPECT_EQ(morton.encode({8, 12}, 3), balanced_tree(3));
-        EXPECT_EQ(morton.encode({10, 12}, 3), balanced_tree(4));
-        EXPECT_EQ(morton.encode({8, 14}, 3), balanced_tree(5));
-        EXPECT_EQ(morton.encode({10, 14}, 3), balanced_tree(6));
-        EXPECT_EQ(morton.encode({12, 12}, 3), balanced_tree(7));
-        EXPECT_EQ(morton.encode({14, 12}, 3), balanced_tree(8));
-        EXPECT_EQ(morton.encode({12, 14}, 3), balanced_tree(9));
-        EXPECT_EQ(morton.encode({14, 14}, 4), balanced_tree(10));
-        EXPECT_EQ(morton.encode({15, 14}, 4), balanced_tree(11));
-        EXPECT_EQ(morton.encode({14, 15}, 4), balanced_tree(12));
-        EXPECT_EQ(morton.encode({15, 15}, 4), balanced_tree(13));
+        EXPECT_EQ(18, balanced_tree.size());
+        EXPECT_EQ(morton.encode({12, 8}, 3), balanced_tree(0));
+        EXPECT_EQ(morton.encode({14, 8}, 3), balanced_tree(1));
+        EXPECT_EQ(morton.encode({12, 10}, 4), balanced_tree(2));
+        EXPECT_EQ(morton.encode({13, 10}, 4), balanced_tree(3));
+        EXPECT_EQ(morton.encode({12, 11}, 4), balanced_tree(4));
+        EXPECT_EQ(morton.encode({13, 11}, 4), balanced_tree(5));
+        EXPECT_EQ(morton.encode({14, 10}, 3), balanced_tree(6));
+        EXPECT_EQ(morton.encode({8, 12}, 3), balanced_tree(7));
+        EXPECT_EQ(morton.encode({10, 12}, 3), balanced_tree(8));
+        EXPECT_EQ(morton.encode({8, 14}, 3), balanced_tree(9));
+        EXPECT_EQ(morton.encode({10, 14}, 3), balanced_tree(10));
+        EXPECT_EQ(morton.encode({12, 12}, 3), balanced_tree(11));
+        EXPECT_EQ(morton.encode({14, 12}, 3), balanced_tree(12));
+        EXPECT_EQ(morton.encode({12, 14}, 3), balanced_tree(13));
+        EXPECT_EQ(morton.encode({14, 14}, 4), balanced_tree(14));
+        EXPECT_EQ(morton.encode({15, 14}, 4), balanced_tree(15));
+        EXPECT_EQ(morton.encode({14, 15}, 4), balanced_tree(16));
+        EXPECT_EQ(morton.encode({15, 15}, 4), balanced_tree(17));
     }
 }
 
