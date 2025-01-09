@@ -3,12 +3,21 @@
 
 #include <algorithm>
 #include <bitset>
+#include <vector>
 #include <cstdint>
 
 #include "OrthoTree/helpers/MortonHelper.h"
 #include "gtest/gtest.h"
 
 using namespace ippl;
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    Kokkos::initialize(argc, argv);  // Initialize Kokkos
+    int result = RUN_ALL_TESTS();    // Run all tests
+    Kokkos::finalize();              // Finalize Kokkos
+    return result;
+}
 
 TEST(MortonCodesTest, Encode3D)
 {
@@ -187,8 +196,9 @@ TEST(MortonCodesTest, GetChildrenTest) {
   Morton<Dim> morton(max_depth);
 
   morton_code parent = morton.encode({ 126, 126, 126 }, 7);
-  vector_t<morton_code> children = morton.get_children(parent);
-  vector_t<morton_code> expected;
+
+  Kokkos::View<morton_code*> children = morton.get_children(parent);
+  std::vector<morton_code> expected;
   for ( grid_t i = 0; i < 2; i++ ) {
     for ( grid_t j = 0; j < 2; j++ ) {
       for ( grid_t k = 0; k < 2; k++ ) {
@@ -198,8 +208,11 @@ TEST(MortonCodesTest, GetChildrenTest) {
   }
 
   std::sort(expected.begin(), expected.end());
-
-  EXPECT_EQ(children, expected);
+  
+  EXPECT_EQ(children.size(), expected.size());
+  for (unsigned i = 0; i < expected.size(); ++i) {
+    EXPECT_EQ(children(i), expected[i]);
+  }
 }
 
 TEST(MortonCodesTest, GetParentTest) {
@@ -258,8 +271,8 @@ TEST(MortonCodesTest, GetSearchKeysTest) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = morton.encode({ 8, 8, 8 }, 2);
-  vector_t<morton_code> keys = morton.get_search_keys(code);
-  vector_t<morton_code> expected(7);
+  Kokkos::View<morton_code*> keys = morton.get_search_keys(code);
+  std::vector<morton_code> expected(7);
 
   expected[0] = morton.encode({ 16, 16, 16 }, 5);
   expected[1] = morton.encode({ 16, 16, 15 }, 5);
@@ -271,9 +284,12 @@ TEST(MortonCodesTest, GetSearchKeysTest) {
 
 
   std::sort(expected.begin(), expected.end());
-  std::sort(keys.begin(), keys.end());
 
-  EXPECT_EQ(keys, expected);
+  std::vector<morton_code> keys_vec(keys.extent(0));
+  Kokkos::deep_copy(Kokkos::View<morton_code*, Kokkos::HostSpace>(keys_vec.data(), keys_vec.size()), keys);
+  std::sort(keys_vec.begin(), keys_vec.end());
+
+  EXPECT_EQ(keys_vec, expected);
 }
 
 TEST(MortonCodesTest, GetSearchKeysPartialOutOfDomain) {
@@ -282,17 +298,20 @@ TEST(MortonCodesTest, GetSearchKeysPartialOutOfDomain) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = morton.encode({ 24, 16, 16 }, 2);
-  vector_t<morton_code> keys = morton.get_search_keys(code);
-  vector_t<morton_code> expected(3);
+  Kokkos::View<morton_code*> keys = morton.get_search_keys(code);
+  std::vector<morton_code> expected(3);
 
   expected[0] = morton.encode({ 31, 16, 15 }, 5);
   expected[1] = morton.encode({ 31, 15, 15 }, 5);
   expected[2] = morton.encode({ 31, 15, 16 }, 5);
 
   std::sort(expected.begin(), expected.end());
-  std::sort(keys.begin(), keys.end());
 
-  EXPECT_EQ(keys, expected);
+  std::vector<morton_code> keys_vec(keys.extent(0));
+  Kokkos::deep_copy(Kokkos::View<morton_code*, Kokkos::HostSpace>(keys_vec.data(), keys_vec.size()), keys);
+  std::sort(keys_vec.begin(), keys_vec.end());
+
+  EXPECT_EQ(keys_vec, expected);
 }
 
 
@@ -302,7 +321,7 @@ TEST(MortonCodesTest, GetSearchKeysEmpty) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = morton.encode({ 0, 0, 0 }, 1);
-  vector_t<morton_code> keys = morton.get_search_keys(code);
+  Kokkos::View<morton_code*> keys = morton.get_search_keys(code);
 
   EXPECT_EQ(keys.size(), 0);
 }
@@ -313,9 +332,9 @@ TEST(MortonCodesTest, GetNeighborsTest) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = morton.encode({ 8, 8 }, 2);
-  vector_t<morton_code> neighbors = morton.get_neighbors(code, 2);
+  Kokkos::View<morton_code*> neighbors = morton.get_neighbors(code, 2);
 
-  vector_t<morton_code> expected(8);
+  std::vector<morton_code> expected(8);
   expected[0] = morton.encode({ 8, 0 }, 2);
   expected[1] = morton.encode({ 0, 8 }, 2);
   expected[2] = morton.encode({ 0, 0 }, 2);
@@ -326,9 +345,12 @@ TEST(MortonCodesTest, GetNeighborsTest) {
   expected[7] = morton.encode({ 16, 0 }, 2);
 
   std::sort(expected.begin(), expected.end());
-  std::sort(neighbors.begin(), neighbors.end());
+  
+  std::vector<morton_code> neighbors_vec(neighbors.extent(0));
+  Kokkos::deep_copy(Kokkos::View<morton_code*, Kokkos::HostSpace>(neighbors_vec.data(), neighbors_vec.size()), neighbors);
+  std::sort(neighbors_vec.begin(), neighbors_vec.end());
 
-  EXPECT_EQ(neighbors, expected);
+  EXPECT_EQ(neighbors_vec, expected);
 }
 
 
@@ -338,9 +360,9 @@ TEST(MortonCodesTest, GetNeighborsTest3D) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = morton.encode({ 0, 0, 0 }, 4);
-  vector_t<morton_code> neighbors = morton.get_neighbors(code, 4);
+  Kokkos::View<morton_code*> neighbors = morton.get_neighbors(code, 4);
 
-  vector_t<morton_code> expected(7);
+  std::vector<morton_code> expected(7);
   expected[0] = morton.encode({ 2, 0, 0 }, 4);
   expected[1] = morton.encode({ 0, 2, 0 }, 4);
   expected[2] = morton.encode({ 2, 2, 0 }, 4);
@@ -350,9 +372,12 @@ TEST(MortonCodesTest, GetNeighborsTest3D) {
   expected[6] = morton.encode({ 2, 2, 2 }, 4);
 
   std::sort(expected.begin(), expected.end());
-  std::sort(neighbors.begin(), neighbors.end());
 
-  EXPECT_EQ(neighbors, expected);
+  std::vector<morton_code> neighbors_vec(neighbors.extent(0));
+  Kokkos::deep_copy(Kokkos::View<morton_code*, Kokkos::HostSpace>(neighbors_vec.data(), neighbors_vec.size()), neighbors);
+  std::sort(neighbors_vec.begin(), neighbors_vec.end());
+
+  EXPECT_EQ(neighbors_vec, expected);
 }
 
 TEST(MortonCodesTest, GetNeighborsTestRoot) {
@@ -361,7 +386,7 @@ TEST(MortonCodesTest, GetNeighborsTestRoot) {
   Morton<Dim> morton(max_depth);
 
   morton_code code = 0;
-  vector_t<morton_code> neighbors = morton.get_neighbors(code, 0);
+  Kokkos::View<morton_code*> neighbors = morton.get_neighbors(code, 0);
 
   EXPECT_EQ(neighbors.size(), 0);
 }

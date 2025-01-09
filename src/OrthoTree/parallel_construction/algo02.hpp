@@ -47,7 +47,9 @@ namespace ippl {
             morton_helper.get_nearest_common_ancestor(code_a, code_b);
 
         std::stack<morton_code> stack;
-        for (morton_code child : morton_helper.get_children(nearest_comm_ancestor)) {
+        auto children = morton_helper.get_children(nearest_comm_ancestor);
+        auto children_span = std::span(children.data(), children.size());
+        for (morton_code child : children_span) {
             stack.push(child);
         }
 
@@ -68,7 +70,9 @@ namespace ippl {
                 idx++;
             }
             else if (is_ancestor_of_a || is_ancestor_of_b) {
-                for (morton_code child : morton_helper.get_children(current_node)) {
+                auto children = morton_helper.get_children(current_node);
+                auto children_span = std::span(children.data(), children.size());
+                for (morton_code child : children_span) {
                     stack.push(child);
                 }
             }

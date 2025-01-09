@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <span>
 #include <cmath>
 #include "MortonHelper.h"
 
@@ -20,7 +21,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::encode(const grid_coordinate& coordinate, const size_t depth) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::encode(const grid_coordinate& coordinate, const size_t depth) const
     {
         morton_code code = 0;
         for ( size_t i = 0; i < Dim; ++i ) {
@@ -33,7 +34,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline Morton<Dim>::grid_coordinate Morton<Dim>::decode(morton_code code) const
+    KOKKOS_INLINE_FUNCTION Morton<Dim>::grid_coordinate Morton<Dim>::decode(morton_code code) const
     {
         code = code >> depth_mask_shift; // remove depth information
         grid_coordinate grid_pos;
@@ -49,13 +50,13 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline size_t Morton<Dim>::get_depth(morton_code code) const
+    KOKKOS_INLINE_FUNCTION size_t Morton<Dim>::get_depth(morton_code code) const
     {
         return code & depth_mask;
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_parent(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_parent(morton_code code) const
     {
         assert(code != morton_code(0) && "root has not parent");
 
@@ -74,7 +75,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_parent_at_level(morton_code code, morton_code depth) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_parent_at_level(morton_code code, morton_code depth) const
     {
         assert(code != morton_code(0) && "root has not parent");
 
@@ -95,25 +96,27 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_children(morton_code code) const {
-        vector_t<morton_code> vec;
-        vec.reserve(n_children);
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_children(morton_code code) const {
+        Kokkos::View<morton_code*> children("children", n_children);
 
-        for ( size_t i = 0; i < n_children; ++i ) {
-            vec.push_back(get_nth_child(code, i));
+        {
+            auto local_code = code;
+            Kokkos::parallel_for("SetChildren", n_children, KOKKOS_LAMBDA(const size_t i) {
+                children(i) = get_nth_child(local_code, i);
+            });
         }
 
-        return vec;
+        return children;
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_siblings(morton_code code) const
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_siblings(morton_code code) const
     {
         return get_children(get_parent(code));
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_descendant(morton_code child, morton_code parent) const
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::is_descendant(morton_code child, morton_code parent) const
     {
 
         // child has to be finer than parent
@@ -131,13 +134,13 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_ancestor(morton_code child, morton_code parent) const
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::is_ancestor(morton_code child, morton_code parent) const
     {
         return is_descendant(child, parent);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_first_child(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_first_child(morton_code code) const
     {
         /*
         std::string error = std::string("RANK: ") + std::to_string(Comm->rank()).c_str()
@@ -151,7 +154,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_last_child(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_last_child(morton_code code) const
     {
 
         return get_nth_child(code, n_children - 1);
@@ -159,14 +162,14 @@ namespace ippl {
 
     // implementation corrected for absolute level
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_first_descendant(morton_code code, const size_t level) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_first_descendant(morton_code code, const size_t level) const
     {
         return (code & (~depth_mask)) + level;
     }
 
     // implementation corrected for absolute level
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_last_descendant(morton_code code, const size_t level) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_last_descendant(morton_code code, const size_t level) const
     {
         const morton_code current_depth = get_depth(code);
         /*
@@ -178,7 +181,7 @@ namespace ippl {
 
         // the number of descendants at a given relative level are given by 
         // 2^(Dim * (level difference)) as each level multiplies a factor 2^Dim
-        const morton_code num_descendants = (1ULL << (Dim * (level - current_depth)));
+        const morton_code num_descendants = (1 << (Dim * (level - current_depth)));
 
         // the last descendant is num_descendants - 1 morton code steps
         // away from the first descendant
@@ -186,7 +189,7 @@ namespace ippl {
     }
 
     template<size_t Dim>
-    inline morton_code Morton<Dim>::get_nth_descendant(morton_code code, const size_t level, size_t n) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_nth_descendant(morton_code code, const size_t level, size_t n) const
     {
         assert(level >= get_depth(code) && "can't get descendants at a coarser level than the current node!");
         assert(level <= max_depth && "can't get descendants at a level larger than max_depth");
@@ -201,19 +204,19 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_deepest_first_descendant(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_deepest_first_descendant(morton_code code) const
     {
         return get_first_descendant(code, max_depth);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_deepest_last_descendant(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_deepest_last_descendant(morton_code code) const
     {
         return get_last_descendant(code, max_depth);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_nearest_common_ancestor(morton_code code_a, morton_code code_b) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_nearest_common_ancestor(morton_code code_a, morton_code code_b) const
     {
         size_t depth_a = get_depth(code_a);
         size_t depth_b = get_depth(code_b);
@@ -234,7 +237,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_step_size(morton_code code) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_step_size(morton_code code) const
     {
         // could it be that this can be simplified the following way:
         // the min step size is equal to floor(log2(max_depth)) + 1 == sizeof(depth encoding)
@@ -244,7 +247,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::spread_coords(grid_t coord) const
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::spread_coords(grid_t coord) const
     {
         morton_code res = 0;
         for (size_t i = 0; i < max_depth + 1; ++i) {
@@ -258,21 +261,21 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::is_sibling(morton_code a, morton_code b) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::is_sibling(morton_code a, morton_code b) const {
         // i think its faster if we leave this out (no branching)
         // if (get_depth(a) != get_depth(b)) return false;
         return get_parent(a) == get_parent(b);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::get_nth_child(morton_code code, size_t n) const {
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::get_nth_child(morton_code code, size_t n) const {
         assert(n < n_children && "can't get child with index larger than n_children");
         assert(get_depth(code) < max_depth && "can't get children at the deepest level");
         return get_first_child(code) + n * get_step_size(get_first_child(code));
     }
 
     template <size_t Dim>
-    inline int Morton<Dim>::get_child_index(morton_code parent, morton_code child) const {
+    KOKKOS_INLINE_FUNCTION int Morton<Dim>::get_child_index(morton_code parent, morton_code child) const {
         if (get_parent(child) != parent) return -1;
 
         const morton_code step = get_step_size(child);
@@ -280,9 +283,8 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_search_keys(morton_code code) const {
-        vector_t<morton_code> keys;
-        keys.reserve(n_children - 1);
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_search_keys(morton_code code) const {
+        Kokkos::View<morton_code*> keys("Keys", n_children - 1);
 
         int index = get_child_index(get_parent(code), code);
         assert(index != -1 && "code is not a child of its parent");
@@ -320,27 +322,30 @@ namespace ippl {
             if (max >= max_coord ) {
                 continue;
             } 
-            keys.push_back(encode(current_coords, max_depth));
+            keys(i) = encode(current_coords, max_depth);
         }
 
         return keys;
     }
 
     template<size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_neighbors(const morton_code code,
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_neighbors(const morton_code code,
                                                    const size_t neighbor_level) const {
         assert(neighbor_level <= max_depth && "Cant go below max_depth!");
 
+        // we iterate over the 3^Dim hypercube surrounding the node
+        size_t n = std::pow(3, Dim);
+
         grid_coordinate coords = decode(code);
-        vector_t<morton_code> neighbors;
+        Kokkos::View<morton_code*> neighbors("neighbors", n - 1);
         size_t level_jump = 1 << (max_depth - neighbor_level);
         grid_coordinate offset{};
         grid_coordinate neighbor_offset(level_jump);
 
         // we iterate over the 3^Dim hypercube surrounding the node 
-        for (size_t i = 0; i < std::pow(3, Dim); ++i) {
+        for (size_t i = 0; i < n; ++i) {
             // we skip the center as we are only interested in the neighbors
-            if (i == (size_t)std::pow(3, Dim) / 2)
+            if (i == n/2)
                 continue;
             for (size_t j = 0; j < Dim; ++j) {
                 int three_pow_j = std::pow(3, j);
@@ -353,22 +358,22 @@ namespace ippl {
             auto max = *std::max_element(current_coords.begin(), current_coords.end());
             // if we produce big coordinates due to exiting the domain at the it's maximum
             // or integer underflow, we skip this key 
-            if (max >= (1 << max_depth)) {
+            if (max >= unsigned(1 << max_depth)) {
                 continue;
             }
-            neighbors.push_back(encode(current_coords, neighbor_level));
+            neighbors(i) = encode(current_coords, neighbor_level);
         }
         return neighbors;
     }
 
     template <size_t Dim>
-    inline vector_t<morton_code> Morton<Dim>::get_insulation_layer(const morton_code code) const {
+    KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> Morton<Dim>::get_insulation_layer(const morton_code code) const {
         const size_t depth = get_depth(code);
         return get_neighbors(code, depth);
     }
 
     template<size_t Dim>
-    inline bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::are_neighbors(morton_code a, morton_code b) const {
         // if the codes are the same they are not neighbors
         if (a == b) return false;
 
@@ -380,8 +385,9 @@ namespace ippl {
         }
 
         auto neighbors = get_neighbors(a, get_depth(a));
+        auto neighbors_span = std::span(neighbors.data(), neighbors.size());        
 
-        for (auto& neighbor : neighbors) {
+        for (auto& neighbor : neighbors_span) {
           if (neighbor == b) {
             return true;
           }
@@ -395,7 +401,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
+    KOKKOS_INLINE_FUNCTION bool Morton<Dim>::does_overlap(morton_code child, morton_code parent) const {
         return (child == parent) || is_ancestor(child, parent);
     }
 
