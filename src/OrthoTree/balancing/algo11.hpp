@@ -78,8 +78,6 @@ namespace ippl {
                         }
                     });
 
-            std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": out_size: " + std::to_string(out_size) + "\n";
-            std::cerr << log_str;
             Kokkos::parallel_for(
                 "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
                     output(output.size() - 1) = input(input.extent(0) - 1);
@@ -477,6 +475,14 @@ namespace ippl {
     Kokkos::View<morton_code*> OrthoTree<Dim>::algo11(Kokkos::View<morton_code*> L_view) {
         std::cout << std::to_string(Comm->rank()) + ": starting algo11\n";
 
+        std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": L_view1 = {";
+        for (size_t i = 0; i < L_view.size(); i++) {
+            log_str += std::to_string(L_view(i));
+            if(i != L_view.size()-1) log_str += ", ";
+        }
+        log_str += "}\n";
+        std::cerr << log_str;
+
         IpplTimings::TimerRef algo11Timer = IpplTimings::getTimer("algo11");
         IpplTimings::startTimer(algo11Timer);
 
@@ -484,7 +490,24 @@ namespace ippl {
         IpplTimings::startTimer(algo11_B_view_Timer);
 
         // Kokkos::View<morton_code*> B_view = block_partition(L_view(0), L_view(L_view.size() - 1));
-        Kokkos::View<morton_code*> B_view = L_view; // algo4_11(L_view);
+        auto [B_view, new_L_view] = algo4_11(L_view);
+        L_view = new_L_view;
+
+        log_str = "Rank " + std::to_string(Comm->rank()) + ": B_view = {";
+        for (size_t i = 0; i < B_view.size(); i++) {
+            log_str += std::to_string(B_view(i));
+            if(i != B_view.size()-1) log_str += ", ";
+        }
+        log_str += "}\n";
+        std::cerr << log_str;
+
+        log_str = "Rank " + std::to_string(Comm->rank()) + ": L_view = {";
+        for (size_t i = 0; i < L_view.size(); i++) {
+            log_str += std::to_string(L_view(i));
+            if(i != L_view.size()-1) log_str += ", ";
+        }
+        log_str += "}\n";
+        std::cerr << log_str;
 
         IpplTimings::stopTimer(algo11_B_view_Timer);
 

@@ -78,6 +78,9 @@ namespace ippl {
         auto linearised_octants   = linearise_octants(deduplicated_octants);
 
         auto partitioned_octants      = partition(linearised_octants);
+
+        std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": partitioned_octants = {";
+
         const size_t partitioned_size = partitioned_octants.extent(0);
 
         morton_code push_front_buff = 0;

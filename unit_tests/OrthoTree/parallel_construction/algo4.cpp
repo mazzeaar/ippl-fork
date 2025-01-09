@@ -41,7 +41,7 @@ TEST(BlockPartition, BlockPartitionTest) {
         tree(6) = morton.encode({14, 4}, 3);
         tree(7) = morton.encode({12, 6}, 3);
         orthotree.getAidList()->resize(1);
-        orthotree.getAidList()->setOctant(484, 0);
+        orthotree.getAidList()->setOctant(476, 0);
         orthotree.getAidList()->setID(3, 0);
     } else if(Comm->rank() == 2){
         tree(0) = morton.encode({14, 6}, 4);
@@ -84,12 +84,12 @@ TEST(BlockPartition, BlockPartitionTest) {
     }
 
     //Kokkos::View<morton_code*> partition = orthotree.block_partition(tree(0), tree(tree.size()-1));
-    Kokkos::View<morton_code*> partition = orthotree.algo4_11(tree);
+    auto [partition, F_view] = orthotree.algo4_11(tree);
 
     std::string log_str = "Rank " + std::to_string(Comm->rank()) + ": partition = {";
-    for (size_t i = 0; i < tree.size(); i++) {
+    for (size_t i = 0; i < partition.size(); i++) {
         log_str += std::to_string(partition(i));
-        if(i != tree.size()-1) log_str += ", ";
+        if(i != partition.size()-1) log_str += ", ";
     }
     log_str += "}\n";
     std::cerr << log_str;
