@@ -16,7 +16,7 @@ namespace ippl {
         // find the lowest level (smallest depth)
         size_t lowest_level;
         Kokkos::parallel_reduce("algo4::FindLowestLevel",
-            T.size(),
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,T.size()),
             KOKKOS_LAMBDA(const size_t i, size_t& min_depth) {
                 size_t depth = morton_helper.get_depth(T(i));
                 if (depth < min_depth) {
@@ -28,7 +28,7 @@ namespace ippl {
         // count the number of elements at the lowest level
         size_t C_size;
         Kokkos::parallel_reduce("algo4::CountAtLowestLevel",
-            T.size(),
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,T.size()),
             KOKKOS_LAMBDA(const size_t i, size_t& count) {
                 if (morton_helper.get_depth(T(i)) == lowest_level) {
                     count++;
@@ -40,7 +40,8 @@ namespace ippl {
 
         // populate C_view
         Kokkos::parallel_scan("algo4::PopulateC",
-            T.size(), KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,T.size()),
+             KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
                 if (morton_helper.get_depth(T(i)) == lowest_level) {
                     if (final) {
                         C(index) = T(i);

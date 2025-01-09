@@ -32,7 +32,8 @@ namespace ippl {
         const auto local_morton_helper = this->morton_helper;
         size_t count                   = 0;
         Kokkos::parallel_reduce(
-            "algo8::CountValidOctants", input_size - 1,
+            "algo8::CountValidOctants", 
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,input_size - 1),
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 // no branching this way
                 local_count += static_cast<size_t>(
@@ -45,7 +46,9 @@ namespace ippl {
         Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> output_view("algo8::linearised_view", output_size);
 
         Kokkos::parallel_scan(
-                "algo8:AddRelevantOctants", input_size - 1, KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
+                "algo8:AddRelevantOctants", 
+                Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,input_size - 1), 
+                KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
                     if (!local_morton_helper.is_ancestor(input_view(i+1), input_view(i))) {
                         if (final) {
                             output_view(index) = input_view(i);
@@ -55,11 +58,12 @@ namespace ippl {
                 });
 
         // deep copy didnt compile, so we use this georgeous thing lol
-        Kokkos::parallel_for(
+        /*Kokkos::parallel_for(
             "algo8::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
                 output_view(output_size - 1) = input_view(input_size - 1);
-            });
+            });*/
 
+        output_view(output_size - 1) = input_view(input_size - 1);
         IpplTimings::stopTimer(lineariseOctantsTimer);
 
         return output_view;

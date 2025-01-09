@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "OrthoTreeParticle.h"
 #include <Types/Vector.h>
+#include <Kokkos_Core.hpp>
 
 namespace ippl {
 
@@ -15,6 +16,7 @@ namespace ippl {
 
     template <size_t Dim>
     using grid_coordinate_template = ippl::Vector<grid_t, Dim>;
+    using TreeDefaultExecutionSpace = typename Kokkos::OpenMP;
 
 } // namespace ippl
 

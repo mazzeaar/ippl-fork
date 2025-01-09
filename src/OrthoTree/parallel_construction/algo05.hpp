@@ -40,7 +40,8 @@ namespace ippl {
 
         // fast computation of the prefix sum
         Kokkos::parallel_scan(
-            "algo5::prefix_sum", octants.size(),
+            "algo5::prefix_sum", 
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,octants.size()),
             KOKKOS_LAMBDA(const size_t i, size_t& sum, const bool final) {
                 sum += weights(i);
                 if (final) {
@@ -60,7 +61,8 @@ namespace ippl {
 
         // adjust prefix_sum to be the global prefix sum
         Kokkos::parallel_for(
-            "algo5::adjust prefix_sum", octants.size(),
+            "algo5::adjust prefix_sum", 
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,octants.size()),
             KOKKOS_LAMBDA(const size_t i) { prefix_sum(i) += local_prefix - local_total; });
 
         // initialize the average weight and the remainder
@@ -138,7 +140,8 @@ namespace ippl {
         // This will allow easy computation of starting indices
         Kokkos::View<size_t*,Kokkos::HostSpace::memory_space> received_prefix_sum("algo5::received_prefix_sum", world_size);
         Kokkos::parallel_scan(
-            "algo5::received_prefix_sum", world_size,
+            "algo5::received_prefix_sum", 
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,world_size),
             KOKKOS_LAMBDA(const size_t i, size_t& sum, const bool final) {
                 sum += received_sizes(i);
                 if (final) {
@@ -170,7 +173,9 @@ namespace ippl {
 
         // insert the octants that stay on this rank fast
         Kokkos::parallel_for(
-            "algo5::insert partitioned_octants", local_end_idx - local_start_idx, KOKKOS_LAMBDA(const size_t i) {
+            "algo5::insert partitioned_octants",
+             Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,local_end_idx - local_start_idx),
+              KOKKOS_LAMBDA(const size_t i) {
                 unsigned insert_start_idx =
                     received_prefix_sum(world_rank) - received_sizes(world_rank);
                 partitioned_octants(insert_start_idx + i) = octants(local_start_idx + i);

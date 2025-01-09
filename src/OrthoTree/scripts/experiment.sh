@@ -11,7 +11,7 @@ NUM_PROCESSORS=$1
 shift # Remove the first argument, so $@ now contains only additional arguments
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEST_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)/build/test/orthotree"
+TEST_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)/build_cuda2/test/orthotree"
 TEST_EXE="OrthoTreeTest"
 
 # Navigate to the test directory

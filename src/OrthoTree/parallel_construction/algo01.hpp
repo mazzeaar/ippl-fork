@@ -8,6 +8,7 @@ namespace ippl {
     template <size_t Dim>
     Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> OrthoTree<Dim>::build_tree(particle_t const& particles) {
         START_FUNC;
+        std::cout<<"Building tree on rank: "<<Comm->rank()<<std::endl;
 
         IpplTimings::TimerRef aidListTimer = IpplTimings::getTimer("aid_list");
         IpplTimings::startTimer(aidListTimer);

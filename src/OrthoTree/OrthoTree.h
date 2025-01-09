@@ -22,6 +22,7 @@ namespace ippl {
     template <size_t Dim>
     using particle_type_template = OrthoTreeParticle<ippl::ParticleSpatialLayout<double, Dim>>;
 
+
     /**
      * @brief This is the OrthoTree class, nice oder.
      *
@@ -283,9 +284,12 @@ namespace ippl {
         std::ostream& print_particles(std::ostream& os, particle_t const& particles) {
             const size_t N =
                 (world_rank == 0) ? particles.getLocalNum() / world_size : particles.getLocalNum();
+            Kokkos::View<real_coordinate*,Kokkos::HostSpace::memory_space> R_host("R_host", N);
+            Kokkos::deep_copy(R_host, particles.R.getView());
             for (size_t i = 0; i < N; ++i) {
-                os << i << " " << particles.R(i) << std::endl;
+                os << R_host(i) << std::endl;
             }
+
 
             return os;
         }
@@ -320,7 +324,7 @@ namespace ippl {
             std::string outputPath = std::string(IPPL_SOURCE_DIR)
                                      + "/src/OrthoTree/scripts/output/octants"
                                      + std::to_string(Comm->rank()) + ".txt";
-
+            
             std::ofstream file(outputPath, std::ofstream::out);
             print_octant_list(file, octants.data(), octants.data() + octants.size());
             file.flush();

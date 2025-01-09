@@ -18,9 +18,10 @@ namespace ippl {
     Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> remove_duplicates(Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space> input_view) {
         const size_t input_size = input_view.extent(0);
 
-        size_t unique_count = 0;
+        size_t unique_count;
         Kokkos::parallel_reduce(
-            "algo3::CountUniqueElements", input_size - 1,
+            "algo3::CountUniqueElements", 
+            Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,input_size - 1),
             KOKKOS_LAMBDA(const size_t i, size_t& local_count) {
                 local_count += static_cast<size_t>(input_view(i) != input_view(i + 1));
             },
@@ -42,7 +43,8 @@ namespace ippl {
         */
 
         Kokkos::parallel_scan(
-                "algo3::PopulateUniqueElements", input_size - 1, 
+                "algo3::PopulateUniqueElements", 
+                Kokkos::RangePolicy<TreeDefaultExecutionSpace>(0,input_size - 1), 
                 KOKKOS_LAMBDA(const size_t i, size_t& index, bool final) {
                     if (input_view(i) != input_view(i+1)) {
                         if (final) {
@@ -52,10 +54,12 @@ namespace ippl {
                     }
                 });
 int a;
-        Kokkos::parallel_for(
+        /*Kokkos::parallel_for(
             "algo3::AddLastElement", 1, KOKKOS_LAMBDA(const int) {
                 output_view(output_size - 1) = input_view(input_view.extent(0) - 1);
             });
+            */
+        output_view(output_size - 1) = input_view(input_view.extent(0) - 1);
 
         return output_view;
     }

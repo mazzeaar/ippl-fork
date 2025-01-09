@@ -5,6 +5,7 @@
 #include <span>
 #include "OrthoTree/helpers/BoundingBox.h"
 #include "OrthoTree/helpers/MortonHelper.h"
+#include "OrthoTree/helpers/MortonHelperDevice.h"
 
 namespace ippl {
     template <size_t Dim>
@@ -13,7 +14,7 @@ namespace ippl {
         const size_t world_size;
         const size_t max_depth;
         const Morton<Dim> morton_helper;
-        using AidListDefaultExecutionSpace = typename Kokkos::DefaultExecutionSpace;
+        using AidListDefaultExecutionSpace = typename Kokkos::OpenMP;
 
         Inform logger;
 

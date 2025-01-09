@@ -349,24 +349,47 @@ namespace ippl {
         octants      = Kokkos::View<morton_code*,Kokkos::HostSpace::memory_space>("aid_list::octants", n_particles);
         particle_ids = Kokkos::View<size_t*,Kokkos::HostSpace::memory_space>("aid_list::particle_ids", n_particles);
 
-        Kokkos::View<size_t*> octants_device("aid_list::octants_device", n_particles);
+        Kokkos::View<morton_code*> octants_device("aid_list::octants_device", n_particles);
         Kokkos::View<size_t*> particle_ids_device("aid_list::particle_ids_device", n_particles);
+
+        auto min_r_bounds = root_bounds.get_min();
+        auto grid_size_d  = grid_size;
+        auto root_bounds_size_d = root_bounds_size;
+    
+        auto get_grid_coordinate = KOKKOS_LAMBDA(const real_coordinate& r) {
+            return static_cast<grid_coordinate>((r - min_r_bounds) * (grid_size_d - 1) / root_bounds_size_d);
+        };
+
+        auto get_octant = KOKKOS_LAMBDA(const grid_coordinate& grid_coord) {
+            return morton_helper.encode(grid_coord, max_depth);
+        };
+
+        auto max_depth_d = max_depth;
+        MortonDevice<Dim> morton_helper_device(max_depth);
+        printf("This is where I segfault\n");
 
         Kokkos::parallel_for(
             "aid_list::initialize_from_rank::InitializeAidList",
-            Kokkos::RangePolicy<>(0, n_particles), KOKKOS_LAMBDA(const size_t i) {
+            Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, n_particles), KOKKOS_LAMBDA(const size_t i) {
                 // Calculate grid coordinate
                 //printf("i: %d\n", i);
-                const grid_coordinate grid_coord = static_cast<grid_coordinate>(
-                    (particles.R(i) - root_bounds.get_min()) * (grid_size - 1) / root_bounds_size);
-
+                const grid_coordinate grid_coord = static_cast<grid_coordinate>((particles.R(i) - min_r_bounds) * (grid_size_d - 1) / root_bounds_size_d);
                 //printf(" got grid coordinate for i: %d\n", i);
-                octants_device(i)      = morton_helper.encode(grid_coord, max_depth);
-                //printf(" got octant for i: %d\n", i);
+                octants_device(i)      = morton_helper_device.encode(grid_coord, max_depth_d);
+                //printf(" got octant for i: %d\n octant: %d\n", i, octants_device(i));
                 particle_ids_device(i) = i;
             });
+        printf("Just kidding, this is where I segfault\n");
         Kokkos::deep_copy(octants, octants_device);
         Kokkos::deep_copy(particle_ids, particle_ids_device);
+        printf("Actually, this is where I segfault\n");
+
+
+        /*
+        for(size_t i = 0; i < n_particles; i++) {
+            printf("octant: %d\n particle_id: %d\n", octants(i), particle_ids(i));
+        }
+        */
 
         // log size of aid list
         logger << "Size of aid list: " << octants.size() << endl;
