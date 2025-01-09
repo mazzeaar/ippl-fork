@@ -29,6 +29,8 @@ namespace ippl {
         IpplTimings::TimerRef partitionTimer = IpplTimings::getTimer("partition");
         IpplTimings::startTimer(partitionTimer);
 
+        // TODO this is probably a source of error
+        // if(octants.size() == 0)
         Kokkos::View<morton_code*> prefix_sum("prefix_sum", octants.size());
 
         // the global weight up to right after this rank
