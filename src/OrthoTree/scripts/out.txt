@@ -1,0 +1,576 @@
+Running the experiment with 2 processors...
+[  3%] Built target kokkossimd
+[ 14%] Built target Heffte
+[ 64%] Built target kokkoscore
+[ 67%] Built target kokkoscontainers
+[ 92%] Built target ippl
+[100%] Built target OrthoTreeBenchmarking
+[100%] Built target OrthoTreeTest
+Experimental build successful.
+Running test with 2 processors: OrthoTreeTest 
+KokkosP: Kernel Logger Library Initialized (sequence is 0, version: 20211015)
+KokkosP: Allocate<Host> name: bucket_borders pointer: 0x62d23f4244c0 size: 8
+KokkosP: Executing parallel-for kernel on device 16777217 with unique execution identifier 0
+KokkosP:     Kokkos::View::initialization [bucket_borders] via memset
+KokkosP: Executing fence on device 16777217 with unique execution identifier 1
+KokkosP:     HostSpace fence
+KokkosP: Execution of fence 1 is completed.
+KokkosP: Execution of kernel 0 is completed.
+KokkosP: Executing fence on device 16777217 with unique execution identifier 2
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 2 is completed.
+KokkosP: Kernel Logger Library Initialized (sequence is 0, version: 20211015)
+KokkosP: Allocate<Cuda> name: local regions (device) pointer: 0x7fdbed098400 size: 128
+KokkosP: Executing fence on device 33554433 with unique execution identifier 3
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Allocate<Host> name: bucket_borders pointer: 0x557afe445740 size: 8
+KokkosP: Executing parallel-for kernel on device 16777217 with unique execution identifier 0
+KokkosP:     Kokkos::View::initialization [bucket_borders] via memset
+KokkosP: Executing fence on device 16777217 with unique execution identifier 1
+KokkosP:     HostSpace fence
+KokkosP: Execution of fence 1 is completed.
+KokkosP: Execution of kernel 0 is completed.
+KokkosP: Executing fence on device 16777217 with unique execution identifier 2
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 2 is completed.
+KokkosP: Execution of fence 3 is completed.
+KokkosP: Allocate<Host> name: local regions (device)_mirror pointer: 0x62d23f9d4f40 size: 128
+KokkosP: Allocate<Cuda> name: local domains (device) pointer: 0x7fdbed098600 size: 128
+KokkosP: Executing fence on device 33554433 with unique execution identifier 4
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 4 is completed.
+KokkosP: Allocate<Host> name: local domains (device)_mirror pointer: 0x62d23f9d6840 size: 128
+KokkosP: Allocate<Cuda> name: local regions (device) pointer: 0x749f65098400 size: 128
+KokkosP: Executing fence on device 33554433 with unique execution identifier 3
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Allocate<Cuda> name:  pointer: 0x7fdbed098800 size: 80000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 5
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 3 is completed.
+KokkosP: Allocate<Host> name: local regions (device)_mirror pointer: 0x557afe9f63c0 size: 128
+KokkosP: Allocate<Cuda> name: local domains (device) pointer: 0x749f65098600 size: 128
+KokkosP: Executing fence on device 33554433 with unique execution identifier 4
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 5 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 6
+KokkosP:     Kokkos::View::initialization []
+KokkosP: Execution of fence 4 is completed.
+KokkosP: Allocate<Host> name: local domains (device)_mirror pointer: 0x557afe9f7ac0 size: 128
+KokkosP: Allocate<Cuda> name:  pointer: 0x749f65098800 size: 80000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 5
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 5 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 6
+KokkosP:     Kokkos::View::initialization []
+KokkosP: Executing fence on device 33554433 with unique execution identifier 7
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 7 is completed.
+KokkosP: Execution of kernel 6 is completed.
+KokkosP: Allocate<Cuda> name:  pointer: 0x749f650ac200 size: 40000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 8
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 8 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 9
+KokkosP:     Kokkos::View::initialization [] via memset
+KokkosP: Execution of kernel 9 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 10
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 10 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 7
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 7 is completed.
+KokkosP: Execution of kernel 6 is completed.
+KokkosP: Allocate<Cuda> name:  pointer: 0x7fdbed0ac200 size: 40000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 8
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 8 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 9
+KokkosP:     Kokkos::View::initialization [] via memset
+KokkosP: Execution of kernel 9 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 10
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 10 is completed.
+KokkosP: Allocate<Host> name: _mirror pointer: 0x557afee9ab40 size: 80000
+KokkosP: Executing parallel-for kernel on device 16777217 with unique execution identifier 11
+KokkosP:     Kokkos::View::initialization [_mirror]
+KokkosP: Allocate<Host> name: _mirror pointer: 0x62d23fe798c0 size: 80000
+KokkosP: Executing parallel-for kernel on device 16777217 with unique execution identifier 11
+KokkosP:     Kokkos::View::initialization [_mirror]
+KokkosP: Executing fence on device 16777217 with unique execution identifier 12
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 12 is completed.
+KokkosP: Execution of kernel 11 is completed.
+KokkosP: Executing fence on device 16777217 with unique execution identifier 12
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 12 is completed.
+KokkosP: Execution of kernel 11 is completed.
+KokkosP: DeepCopy<Cuda,Host> DST(name:  pointer: 0x749f65098880) SRC(name: _mirror pointer 0x557afee9abc0) Size: 80000
+KokkosP: Executing fence on device 16777216 with unique execution identifier 13
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, pre view equality check
+KokkosP: Execution of fence 13 is completed.
+KokkosP: DeepCopy<Cuda,Host> DST(name:  pointer: 0x7fdbed098880) SRC(name: _mirror pointer 0x62d23fe79940) Size: 80000
+KokkosP: Executing fence on device 16777216 with unique execution identifier 13
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, pre view equality check
+KokkosP: Execution of fence 13 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 14
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, pre view equality check
+KokkosP: Executing fence on device 33554432 with unique execution identifier 14
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, pre view equality check
+KokkosP: Execution of fence 14 is completed.
+KokkosP: Execution of fence 14 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 15
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, post deep copy fence
+KokkosP: Execution of fence 15 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 16
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, post deep copy fence
+KokkosP: Executing fence on device 16777216 with unique execution identifier 15
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, post deep copy fence
+KokkosP: Execution of fence 15 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 16
+KokkosP:     Kokkos::deep_copy: copy between contiguous views, post deep copy fence
+KokkosP: Execution of fence 16 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 17
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 17 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 18
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 18 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 19
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 16 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 17
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 17 is completed.
+KokkosP: Execution of fence 19 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 18
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 18 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 19
+KokkosP: Executing fence on device 33554432 with unique execution identifier 20
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 20 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 21
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 19 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 20
+KokkosP: Execution of fence 21 is completed.
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 20 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 21
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Executing fence on device 33554432 with unique execution identifier 22
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 22 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 23
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 21 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 22
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 23 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 24
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 24 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 25
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 25 is completed.
+KokkosP: Execution of fence 22 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 23
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 23 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 24
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Executing fence on device 33554432 with unique execution identifier 26
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 26 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 27
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 27 is completed.
+KokkosP: Execution of fence 24 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 25
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 25 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 26
+KokkosP: Executing fence on device 33554432 with unique execution identifier 28
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 28 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 29
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 29 is completed.
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 26 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 27
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 27 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 28
+KokkosP: Executing fence on device 33554432 with unique execution identifier 30
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 30 is completed.
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 28 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 29
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 29 is completed.
+KokkosP: Allocate<Cuda> name: MPI ranks pointer: 0x749f650b6000 size: 20000
+KokkosP: Executing fence on device 33554432 with unique execution identifier 30
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 30 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 31
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Allocate<Cuda> name: MPI ranks pointer: 0x7fdbed0b6000 size: 20000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 31
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 31 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 32
+KokkosP:     Kokkos::View::initialization [MPI ranks] via memset
+KokkosP: Execution of kernel 32 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 33
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 33 is completed.
+KokkosP: Allocate<Cuda> name: invalid pointer: 0x749f650bb000 size: 5000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 34
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 31 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 32
+KokkosP:     Kokkos::View::initialization [MPI ranks] via memset
+KokkosP: Execution of kernel 32 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 33
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 33 is completed.
+KokkosP: Allocate<Cuda> name: invalid pointer: 0x7fdbed0bb000 size: 5000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 34
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 34 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 35
+KokkosP:     Kokkos::View::initialization [invalid] via memset
+KokkosP: Execution of kernel 35 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 36
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 36 is completed.
+KokkosP: Executing parallel-reduce kernel on device 33554433 with unique execution identifier 37
+KokkosP:     ParticleSpatialLayout::locateParticles()
+KokkosP: Execution of kernel 37 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 38
+KokkosP:     Kokkos::parallel_reduce: fence due to result being value, not view
+KokkosP: Execution of fence 38 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 39
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 39 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 40
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 40 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 41
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 41 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 42
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 34 is completed.
+KokkosP: Execution of fence 42 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 43
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 43 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 44
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 35
+KokkosP:     Kokkos::View::initialization [invalid] via memset
+KokkosP: Execution of fence 44 is completed.
+KokkosP: Execution of kernel 35 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 36
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Executing fence on device 16777216 with unique execution identifier 45
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 45 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 46
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 36 is completed.
+KokkosP: Execution of fence 46 is completed.
+KokkosP: Executing parallel-reduce kernel on device 33554433 with unique execution identifier 37
+KokkosP:     ParticleSpatialLayout::locateParticles()
+KokkosP: Execution of kernel 37 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 38
+KokkosP:     Kokkos::parallel_reduce: fence due to result being value, not view
+KokkosP: Execution of fence 38 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 39
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 39 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 40
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 40 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 41
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 41 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 42
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 42 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 43
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 43 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 44
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 44 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 45
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 45 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 46
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 46 is completed.
+KokkosP: Executing parallel-reduce kernel on device 33554433 with unique execution identifier 47
+KokkosP:     ParticleSpatialLayout::numberOfSends()
+KokkosP: Executing parallel-reduce kernel on device 33554433 with unique execution identifier 47
+KokkosP:     ParticleSpatialLayout::numberOfSends()
+KokkosP: Executing fence on device 33554433 with unique execution identifier 48
+KokkosP:     Kokkos::Impl::ParallelReduce<Cuda, RangePolicy>::execute: Result Not Device Accessible
+KokkosP: Executing fence on device 33554433 with unique execution identifier 48
+KokkosP:     Kokkos::Impl::ParallelReduce<Cuda, RangePolicy>::execute: Result Not Device Accessible
+KokkosP: Execution of fence 48 is completed.
+KokkosP: Execution of kernel 47 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 49
+KokkosP:     Kokkos::parallel_reduce: fence due to result being value, not view
+KokkosP: Execution of fence 49 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 50
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 50 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 51
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 51 is completed.
+KokkosP: Execution of fence 48 is completed.
+KokkosP: Execution of kernel 47 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 49
+KokkosP:     Kokkos::parallel_reduce: fence due to result being value, not view
+KokkosP: Execution of fence 49 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 50
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 50 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 51
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 51 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 52
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 52 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 53
+KokkosP: Executing fence on device 16777216 with unique execution identifier 52
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 52 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 53
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 53 is completed.
+KokkosP: Execution of fence 53 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 54
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 54 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 54
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 54 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 55
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Executing fence on device 33554432 with unique execution identifier 55
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 55 is completed.
+KokkosP: Execution of fence 55 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 56
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 56 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 57
+KokkosP: Executing fence on device 16777216 with unique execution identifier 56
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 56 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 57
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 57 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 58
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 57 is completed.
+KokkosP: Allocate<Cuda> name: hash pointer: 0x749f650bc600 size: 20000
+KokkosP: Execution of fence 58 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 59
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 59 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 60
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 60 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 61
+KokkosP: Executing fence on device 33554433 with unique execution identifier 58
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 61 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 62
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 62 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 63
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 63 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 64
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 64 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 65
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 65 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 66
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 66 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 67
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 67 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 68
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 68 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 69
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 69 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 70
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 70 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 71
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 58 is completed.
+KokkosP: Execution of fence 71 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 59
+KokkosP:     Kokkos::View::initialization [hash] via memset
+KokkosP: Allocate<Cuda> name: buffer pointer: 0x7fdbed0bc600 size: 120000
+KokkosP: Execution of kernel 59 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 60
+KokkosP: Executing fence on device 33554433 with unique execution identifier 72
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 60 is completed.
+KokkosP: Executing parallel-scan kernel on device 33554433 with unique execution identifier 61
+KokkosP:     ParticleSpatialLayout::fillHash()
+KokkosP: Execution of kernel 61 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 62
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 62 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 63
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 63 is completed.
+KokkosP: Allocate<Cuda> name:  pointer: 0x749f650c1600 size: 80000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 64
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 72 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 73
+KokkosP:     Kokkos::View::initialization [buffer] via memset
+KokkosP: Execution of kernel 73 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 74
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 74 is completed.
+KokkosP: Execution of fence 64 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 65
+KokkosP:     Kokkos::View::initialization []
+KokkosP: Executing fence on device 33554433 with unique execution identifier 66
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 66 is completed.
+KokkosP: Execution of kernel 65 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 67
+KokkosP:     ParticleAttrib::pack()
+KokkosP: Execution of kernel 67 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 68
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 68 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 69
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 69 is completed.
+KokkosP: Allocate<Cuda> name:  pointer: 0x749f650d5000 size: 40000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 70
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 70 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 71
+KokkosP:     Kokkos::View::initialization [] via memset
+KokkosP: Execution of kernel 71 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 72
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 72 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 73
+KokkosP:     ParticleAttrib::pack()
+KokkosP: Execution of kernel 73 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 74
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 74 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 75
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 75 is completed.
+KokkosP: Allocate<Cuda> name: buffer pointer: 0x749f650dee00 size: 120000
+KokkosP: Executing fence on device 33554433 with unique execution identifier 76
+KokkosP:     SharedAllocationRecord<Kokkos::CudaSpace, void>::SharedAllocationRecord(): fence after copying header from HostSpace
+KokkosP: Execution of fence 76 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 77
+KokkosP:     Kokkos::View::initialization [buffer] via memset
+KokkosP: Execution of kernel 77 is completed.
+KokkosP: Executing fence on device 33554433 with unique execution identifier 78
+KokkosP:     Kokkos::Impl::ViewValueFunctor: View init/destroy fence
+KokkosP: Execution of fence 78 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 79
+KokkosP:     Archive::serialize()
+KokkosP: Execution of kernel 79 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 80
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 80 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 81
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 81 is completed.
+KokkosP: Executing parallel-for kernel on device 33554433 with unique execution identifier 82
+KokkosP:     Archive::serialize()
+KokkosP: Execution of kernel 82 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 83
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 83 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 84
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 84 is completed.
+KokkosP: Deallocate<Cuda> name: hash pointer: 0x749f650bc600 size: 20000
+KokkosP: Executing fence on device 16777216 with unique execution identifier 85
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 85 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 86
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 86 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 87
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 87 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 88
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 88 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 89
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 89 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 90
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 90 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 91
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 91 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 92
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 92 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 93
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 93 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 94
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 94 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 95
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 95 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 96
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 96 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 97
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 97 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 98
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 98 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 99
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 99 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 100
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 100 is completed.
+KokkosP: Executing fence on device 16777216 with unique execution identifier 101
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 101 is completed.
+KokkosP: Executing fence on device 33554432 with unique execution identifier 102
+KokkosP:     Kokkos::fence: Unnamed Global Fence
+KokkosP: Execution of fence 102 is completed.
+Test OrthoTreeTest failed.
+Experiment failed. Exiting pipeline.

@@ -256,9 +256,7 @@ void run_experiment() {
 
         tree.build_tree(particles);
     else
-        std::cerr<<"build tree called"<<std::endl;
         tree.build_tree_naive(particles);
-        std::cerr <<" build tree done" << std::endl;
 
     if (Comm->rank() == 0) {
         auto end      = std::chrono::high_resolution_clock::now();
