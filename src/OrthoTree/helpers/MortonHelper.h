@@ -5,7 +5,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
-#include <vector>
 
 #include "OrthoTree/OrthoTreeTypes.h"
 
@@ -97,10 +96,10 @@ namespace ippl {
         KOKKOS_INLINE_FUNCTION morton_code get_parent(morton_code code) const;
 
         /**
-         * @brief Returns a vector filled with the (2^Dim) children of a node, in ascending order
+         * @brief Returns a View filled with the (2^Dim) children of a node, in ascending order
          *
          * @param code
-         * @return vector_t<morton_code>
+         * @return Kokkos::View<morton_code*>
          */
         KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> get_children(morton_code code) const;
 
@@ -110,7 +109,7 @@ namespace ippl {
          * siblings contain the given code itself
          *
          * @param code
-         * @return vector_t<morton_code>
+         * @return Kokkos::View<morton_code*>
          */
         KOKKOS_INLINE_FUNCTION Kokkos::View<morton_code*> get_siblings(morton_code code) const;
 

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <vector>
 #include <cstdint>
 
 #include "OrthoTree/helpers/MortonHelper.h"
@@ -137,7 +138,7 @@ TEST(MortonCodesTest, GetChildrenTest) {
   Kokkos::ScopeGuard kokkos_guard;
 
   Kokkos::View<morton_code*> children = morton.get_children(parent);
-  vector_t<morton_code> expected;
+  std::vector<morton_code> expected;
   for ( grid_t i = 0; i < 2; i++ ) {
     for ( grid_t j = 0; j < 2; j++ ) {
       for ( grid_t k = 0; k < 2; k++ ) {
