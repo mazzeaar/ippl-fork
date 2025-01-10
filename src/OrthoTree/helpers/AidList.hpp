@@ -21,7 +21,6 @@ namespace ippl {
         logger.setOutputLevel(5);
         logger.setPrintNode(INFORM_ALL_NODES);
         bucket_borders = Kokkos::View<morton_code*>("bucket_borders", world_size - 1);
-
     }
 
     template <size_t Dim>
@@ -56,8 +55,13 @@ namespace ippl {
         }
         IpplTimings::TimerRef sort_aidlist = IpplTimings::getTimer("Sort AidList Timer");
         IpplTimings::startTimer(sort_aidlist);
-        // sort_local_aidlist();
-        sort_local_aidlist_kokkos();
+
+        if (Comm->size() < 8) {
+            sort_local_aidlist();
+        } else {
+            sort_local_aidlist_kokkos();
+        }
+
         IpplTimings::stopTimer(sort_aidlist);
     }
 
