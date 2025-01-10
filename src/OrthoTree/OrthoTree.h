@@ -222,7 +222,7 @@ namespace ippl {
          * @brief Constructs an OrthoTree in the given Octant. It will automatically resize the view
          * to the needed size and apply 'shrink_to_fit' after finishing.
          */
-        void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view);
+        void build_tree_from_octant(morton_code root_octant, Kokkos::View<morton_code*>& tree_view, size_t& start_index);
 
         /**
          * @brief Checks whether the tree is balanced

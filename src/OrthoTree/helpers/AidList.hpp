@@ -583,6 +583,8 @@ namespace ippl {
         /**
          * Exchange the octants between ranks.
          */
+        IpplTimings::TimerRef exchange_timer = IpplTimings::getTimer("Exchange_Timer");
+        IpplTimings::startTimer(exchange_timer);
         {
             Kokkos::View<morton_code*> new_octants("aid_list::innitFromOctants::new_octants",
                                                    new_size_after_exchange);
@@ -669,6 +671,7 @@ namespace ippl {
             octants      = new_octants;
             particle_ids = new_particle_ids;
         }
+        IpplTimings::stopTimer(exchange_timer);
 
         /**
          * Update the bucket borders on each rank.
