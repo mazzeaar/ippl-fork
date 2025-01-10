@@ -11,10 +11,11 @@ constexpr size_t BORDER_MAX_ITER = 10000;
 
 namespace ippl {
     template <size_t Dim>
-    AidList<Dim>::AidList(size_t max_depth)
+    AidList<Dim>::AidList(size_t max_depth, size_t max_particles)
         : world_rank(Comm->rank())
         , world_size(Comm->size())
         , max_depth(max_depth)
+        , max_particles(max_particles)
         , morton_helper(Morton<Dim>(max_depth))
         , logger("AidList", std::cerr, INFORM_ALL_NODES) {
         logger.setOutputLevel(5);
@@ -706,7 +707,7 @@ namespace ippl {
 
         Kokkos::View<size_t*> result("result", octant_container.size());
         for (size_t i = 0; i < octant_container.size(); ++i) {
-            result(i) = getNumParticlesInOctant(octant_container[i]);
+            result(i) = std::min(getNumParticlesInOctant(octant_container[i]), max_particles);
         }
 
         IpplTimings::stopTimer(timer);
