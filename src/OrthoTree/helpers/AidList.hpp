@@ -38,6 +38,10 @@ namespace ippl {
             // receive the bucket size
             size_t bucket_size;
             Comm->recv(&bucket_size, 1, 0, 1, stat);
+            unsigned int max_int = -1;
+            if (bucket_size > max_int/2) {
+              logger << "found the bugger in aid list initialization" << endl;
+            }
 
             IpplTimings::TimerRef bucket_distribution =
                 IpplTimings::getTimer("Bucket Distribution Timer");
@@ -654,6 +658,13 @@ namespace ippl {
 
                 last_insert_idx += recv_size;
                 octants_window.get(start_it_octants, end_it_octants, rank, recv_indices(2 * rank));
+
+
+                unsigned int max_int = -1;
+                if (recv_size > max_int/2) {
+                  logger << "found the bugger in innitFromOctants" << endl;
+                }
+
                 particle_ids_window.get(start_it_particle_ids, end_it_particle_ids, rank,
                                         recv_indices(2 * rank));
             }

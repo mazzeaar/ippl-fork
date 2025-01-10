@@ -11,7 +11,7 @@ namespace ippl {
 
         IpplTimings::TimerRef aidListTimer = IpplTimings::getTimer("aid_list");
         IpplTimings::startTimer(aidListTimer);
-
+        logger << "initiaizing aid list" << endl;
         this->aid_list_m.initialize(root_bounds_m, particles);
         if (aid_list_m.size() == 0) {
             END_FUNC;
@@ -24,6 +24,7 @@ namespace ippl {
         IpplTimings::TimerRef buildTreeTimer = IpplTimings::getTimer("build_tree");
         IpplTimings::startTimer(buildTreeTimer);
 
+        logger << "creating block partition" << endl;
         auto octants = block_partition(min_octant, max_octant);
 
         IpplTimings::stopTimer(buildTreeTimer);
@@ -35,6 +36,7 @@ namespace ippl {
 
         IpplTimings::startTimer(buildTreeTimer);
 
+        logger << "building tree from octants" << endl;
         Kokkos::View<morton_code*> tree_view = build_tree_from_octants(octants);
 
        // octants_to_file(tree_view);
