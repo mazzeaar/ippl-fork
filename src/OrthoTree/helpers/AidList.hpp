@@ -56,11 +56,15 @@ namespace ippl {
         IpplTimings::TimerRef sort_aidlist = IpplTimings::getTimer("Sort AidList Timer");
         IpplTimings::startTimer(sort_aidlist);
 
-        if (Comm->size() < 8) {
+#ifdef Kokkos_ENABLE_OPENMP
+        sort_local_aidlist_kokkos();
+#else
+        if (Comm->size() <= 8) {
             sort_local_aidlist();
         } else {
             sort_local_aidlist_kokkos();
         }
+#endif
 
         IpplTimings::stopTimer(sort_aidlist);
     }
