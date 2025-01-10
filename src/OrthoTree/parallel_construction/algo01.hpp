@@ -61,7 +61,7 @@ namespace ippl {
             // This is more of an upper limit for a good guess probably
             const size_t guess = std::max(2* this->aid_list_m.getNumParticlesInOctant(octant)
                                   / this->max_particles_per_node_m, (size_t)10);
-            return 1024;
+            return guess;
             };
 
         const size_t old_size = tree_view.size();
