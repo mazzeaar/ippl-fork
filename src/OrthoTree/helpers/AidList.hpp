@@ -21,7 +21,6 @@ namespace ippl {
         logger.setOutputLevel(5);
         logger.setPrintNode(INFORM_ALL_NODES);
         bucket_borders = Kokkos::View<morton_code*>("bucket_borders", world_size - 1);
-
     }
 
     template <size_t Dim>
@@ -56,7 +55,17 @@ namespace ippl {
         }
         IpplTimings::TimerRef sort_aidlist = IpplTimings::getTimer("Sort AidList Timer");
         IpplTimings::startTimer(sort_aidlist);
-        sort_local_aidlist();
+
+#ifdef Kokkos_ENABLE_OPENMP
+        sort_local_aidlist_kokkos();
+#else
+        if (Comm->size() <= 8) {
+            sort_local_aidlist();
+        } else {
+            sort_local_aidlist_kokkos();
+        }
+#endif
+
         IpplTimings::stopTimer(sort_aidlist);
     }
 
@@ -281,7 +290,7 @@ namespace ippl {
     // reason
     //  would be cool to try again using cuda
     template <size_t Dim>
-    void AidList<Dim>::sort_local_aidlist_kokkos() {
+    KOKKOS_INLINE_FUNCTION void AidList<Dim>::sort_local_aidlist_kokkos() {
         Kokkos::Profiling::pushRegion("aid_list::sort_local_aidlist");
         Kokkos::UnorderedMap<morton_code, int> map(size());
         using map_op_type     = Kokkos::UnorderedMapInsertOpTypes<Kokkos::View<int*>, morton_code>;
@@ -289,14 +298,12 @@ namespace ippl {
         atomic_add_type atomic_add;
 
         // fill p_ids, m_cs and map
-        {
-            auto local_octants = octants;
-            Kokkos::parallel_for(
-                "aid_list::fill map", size(), KOKKOS_LAMBDA(const int i) {
-                    morton_code key = local_octants(i);
-                    map.insert(key, 1, atomic_add);
-                });
-        }
+        auto local_octants = octants;
+        Kokkos::parallel_for(
+            "aid_list::fill map", size(), KOKKOS_LAMBDA(const int i) {
+                morton_code key = local_octants(i);
+                map.insert(key, 1, atomic_add);
+            });
 
         // get the number of unique keys
         int num_unique_keys = map.size();
@@ -346,7 +353,7 @@ namespace ippl {
 
         {
             auto local_octants = octants;
-            auto local_pids = particle_ids;
+            auto local_pids    = particle_ids;
             Kokkos::parallel_for(
                 "aid_list::sort_local_octants::Refill p_ids and m_cs", size(),
                 KOKKOS_LAMBDA(const int i) {
@@ -374,20 +381,16 @@ namespace ippl {
     void AidList<Dim>::initialize_from_rank(
         size_t max_depth, const BoundingBox<Dim>& root_bounds,
         OrthoTreeParticle<ippl::ParticleSpatialLayout<double, Dim>> const& particles) {
-        if (world_rank != 0) {
-            throw std::runtime_error("This function should only be called on rank 0!");
-        }
-
-        if (!this->is_gathered(particles)) {
-            throw std::runtime_error(
-                "can only initialize if all particles are gathered on one rank!");
-        }
+        assert(world_rank == 0 && "This function should only be called on rank 0!");
+        assert(this->is_gathered(particles) && "All particles must be gathered on one rank!");
 
         const size_t n_particles               = particles.getTotalNum();
         const size_t grid_size                 = (size_t(1) << max_depth);
         using real_coordinate                  = real_coordinate_template<Dim>;
         using grid_coordinate                  = grid_coordinate_template<Dim>;
-        const real_coordinate root_bounds_size = root_bounds.get_max() - root_bounds.get_min();
+        const auto root_min                    = root_bounds.get_min();
+        const real_coordinate root_bounds_size = root_bounds.get_max() - root_min;
+        auto const inv_root_size               = 1.0 / root_bounds_size;
 
         // allocate the space for the octants and the particle ids
         octants      = Kokkos::View<morton_code*>("aid_list::octants", n_particles);
@@ -396,12 +399,13 @@ namespace ippl {
         auto local_octants       = octants;
         auto local_pids          = particle_ids;
         auto local_morton_helper = morton_helper;
+
         Kokkos::parallel_for(
-            "aid_list::initialize_from_rank::InitializeAidList",
-            Kokkos::RangePolicy<>(0, n_particles), KOKKOS_LAMBDA(const size_t i) {
-                // Calculate grid coordinate
+            "aid_list::InitializeAidList", Kokkos::TeamPolicy<>(n_particles, Kokkos::AUTO),
+            KOKKOS_LAMBDA(const auto& team) {
+                auto i                           = team.league_rank();
                 const grid_coordinate grid_coord = static_cast<grid_coordinate>(
-                    (particles.R(i) - root_bounds.get_min()) * grid_size / root_bounds_size);
+                    (particles.R(i) - root_min) * grid_size * inv_root_size);
 
                 local_octants(i) = local_morton_helper.encode(grid_coord, max_depth);
                 local_pids(i)    = i;
