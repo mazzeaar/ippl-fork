@@ -144,7 +144,7 @@ namespace ippl {
             IpplTimings::getTimer("build_tree_from_octants");
         IpplTimings::startTimer(buildTreeFromOctantsTimer);
 
-        Kokkos::View<morton_code*> finished_tree("finished_tree", 2*aid_list_m.size()/max_particles_per_node_m);
+        Kokkos::View<morton_code*> finished_tree("finished_tree", 4*aid_list_m.size()/max_particles_per_node_m);
 
         size_t start_index = 0;
 
