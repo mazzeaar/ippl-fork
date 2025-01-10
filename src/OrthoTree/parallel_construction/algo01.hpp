@@ -48,7 +48,7 @@ namespace ippl {
 
     template <size_t Dim>
     void OrthoTree<Dim>::build_tree_from_octant(morton_code root_octant,
-        Kokkos::View<morton_code*>& tree_view) {
+        Kokkos::View<morton_code*>& tree_view, size_t& start_index) {
         auto guesstimate_subtree_size = [this](morton_code octant) {
             // we can probably do some really smart guessing here
 
@@ -67,13 +67,12 @@ namespace ippl {
         const size_t old_size = tree_view.size();
         const size_t size_increase = guesstimate_subtree_size(root_octant);
 
-        Kokkos::resize(tree_view, old_size + size_increase);
         size_t new_size = tree_view.size();
 
         std::stack<morton_code> stack;
         stack.push(root_octant);
 
-        size_t i = old_size;
+        size_t i = start_index;
         while (!stack.empty()) {
             morton_code cur_octant = stack.top();
             stack.pop();
@@ -96,21 +95,26 @@ namespace ippl {
                 if (i >= new_size) {
                     Kokkos::resize(tree_view, new_size + (size_increase / 2));
                     new_size = tree_view.size();
+                    logger << "resizing" << endl;
                 }
+                assert(i < new_size);
                 tree_view[i++] = cur_octant;
                 continue;
             }
 
-            for (morton_code child_octant : morton_helper.get_children(cur_octant)) {
-                stack.push(child_octant);
+
+            auto children = morton_helper.get_children(cur_octant);
+            for (int j = children.size() - 1; j >= 0; j --) {
+                stack.push(children[j]);
             }
         }
 
         const size_t occupied_size = i;
-        Kokkos::resize(tree_view, occupied_size);
+        start_index = occupied_size;
+        assert(occupied_size <= tree_view.size());
 
         // only sort what we need, the rest should already be sorted
-        std::sort(tree_view.data() + old_size, tree_view.data() + occupied_size);
+        //std::sort(tree_view.data() + old_size, tree_view.data() + occupied_size);
 
         // I WILL LEAVE THIS IN HERE FOR NOW, MIGHT CATCH ERRORS QUICKER IN LATER STAGES
 
@@ -130,6 +134,7 @@ namespace ippl {
         assert(std::is_sorted(tree_view.data(), tree_view.data() + tree_view.size(),
             is_sorted_and_contiguous)
             && "partitioned_tree is not sorted");
+
     }
 
     template <size_t Dim>
@@ -139,11 +144,15 @@ namespace ippl {
             IpplTimings::getTimer("build_tree_from_octants");
         IpplTimings::startTimer(buildTreeFromOctantsTimer);
 
-        Kokkos::View<morton_code*> finished_tree;
+        Kokkos::View<morton_code*> finished_tree("finished_tree", 2*n_particles/max_particles_per_node_m);
+
+        size_t start_index = 0;
 
         for (auto it = octants.data(); it != (octants.data() + octants.size()); ++it) {
-            build_tree_from_octant(*it, finished_tree);
+            build_tree_from_octant(*it, finished_tree, start_index);
         }
+
+        Kokkos::resize(finished_tree, start_index);
 
         IpplTimings::stopTimer(buildTreeFromOctantsTimer);
 
