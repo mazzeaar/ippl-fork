@@ -198,7 +198,6 @@ void run_experiment() {
     auto particles = initializeParticles<Dim>(num_particles_per_proc);
 
     IpplTimings::TimerRef timer = IpplTimings::getTimer("orthotree_build");
-    IpplTimings::clearTimer(timer);
     IpplTimings::startTimer(timer);
     if (balance_tree) {
         if (run_parallel) {
