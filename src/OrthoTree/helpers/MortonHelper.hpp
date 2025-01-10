@@ -5,27 +5,45 @@
 namespace ippl {
 
     template <size_t Dim>
-    morton_code Morton<Dim>::encode(const real_coordinate& coordinate, const real_coordinate& rasterizer, const size_t depth) const
-    {
-        grid_coordinate grid;
-
-        // also: we use two for loops because encode is called instead of encoding directly.
-        for ( size_t i = 0; i < Dim; ++i ) {
-            // this will probably break with negative values or if 0 is not min of bounding box
-            const double normalised_coords = (coordinate[i] / rasterizer[i]);
-            grid[i] = static_cast<morton_code>(normalised_coords);
-        }
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::encode(const real_coordinate& coordinate,
+                                                           const real_coordinate& rasterizer,
+                                                           const size_t depth) const {
+        grid_coordinate grid = static_cast<grid_coordinate>(coordinate / rasterizer);
 
         return encode(grid, depth);
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::encode(const grid_coordinate& coordinate, const size_t depth) const
-    {
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::encode(const grid_coordinate& coordinate,
+                                                           const size_t depth) const {
         morton_code code = 0;
-        for ( size_t i = 0; i < Dim; ++i ) {
-            const morton_code spread_bits = spread_coords(coordinate[i]);
-            code |= (spread_bits << i);
+
+        if constexpr (Dim == 3) {
+            for (size_t i = 0; i < Dim; ++i) {
+                morton_code axis = coordinate[i];
+                axis             = (axis | axis << 32) & 0x001F00000000FFFF;
+                axis             = (axis | axis << 16) & 0x001F0000FF0000FF;
+                axis             = (axis | axis << 8) & 0x100F00F00F00F00F;
+                axis             = (axis | axis << 4) & 0x10C30C30C30C30C3;
+                axis             = (axis | axis << 2) & 0x1249249249249249;
+                code |= (axis << i);
+            }
+        } else if constexpr (Dim == 2) {
+            for (size_t i = 0; i < Dim; ++i) {
+                morton_code axis = coordinate[i];
+                axis             = (axis | axis << 32) & 0x00000000FFFFFFFF;
+                axis             = (axis | axis << 16) & 0x0000FFFF0000FFFF;
+                axis             = (axis | axis << 8) & 0x00FF00FF00FF00FF;
+                axis             = (axis | axis << 4) & 0x0F0F0F0F0F0F0F0F;
+                axis             = (axis | axis << 2) & 0x3333333333333333;
+                axis             = (axis | axis << 1) & 0x5555555555555555;
+                code |= (axis << i);
+            }
+        } else {
+            for (size_t i = 0; i < Dim; ++i) {
+                const morton_code spread_bits = spread_coords(coordinate[i]);
+                code |= (spread_bits << i);
+            }
         }
 
         code = (code << depth_mask_shift) | depth;
@@ -49,8 +67,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline size_t Morton<Dim>::get_depth(morton_code code) const
-    {
+    KOKKOS_INLINE_FUNCTION size_t Morton<Dim>::get_depth(morton_code code) const {
         return code & depth_mask;
     }
 
@@ -78,8 +95,8 @@ namespace ippl {
     {
         assert(code != morton_code(0) && "root has not parent");
 
-        const morton_code code_depth             = get_depth(code);
-        assert(code_depth >= depth && "can't get a parent at a level finer than the current node");
+        assert(get_depth(code) >= depth
+               && "can't get a parent at a level finer than the current node");
 
         const morton_code parent_depth_bits = depth;
 
@@ -244,8 +261,7 @@ namespace ippl {
     }
 
     template <size_t Dim>
-    inline morton_code Morton<Dim>::spread_coords(grid_t coord) const
-    {
+    KOKKOS_INLINE_FUNCTION morton_code Morton<Dim>::spread_coords(grid_t coord) const {
         morton_code res = 0;
         for (size_t i = 0; i < max_depth + 1; ++i) {
             // should be right, idk if this is possible without a loop, to guarantee unroll: replace max_depth with sizeof(morton_code)

@@ -61,8 +61,9 @@ namespace ippl {
          *
          * @return morton_code
          */
-        inline morton_code encode(const real_coordinate& coordinate,
-                                  const real_coordinate& rasterizer, const size_t depth) const;
+        KOKKOS_INLINE_FUNCTION morton_code encode(const real_coordinate& coordinate,
+                                                  const real_coordinate& rasterizer,
+                                                  const size_t depth) const;
 
         /**
          * @brief Encodes the given grid based coordinate to a morton code.
@@ -74,7 +75,8 @@ namespace ippl {
          *
          * @return morton_code
          */
-        inline morton_code encode(const grid_coordinate& coordinate, const size_t depth) const;
+        KOKKOS_INLINE_FUNCTION morton_code encode(const grid_coordinate& coordinate,
+                                                  const size_t depth) const;
 
         /**
          * @brief Decodes the given morton code into an integer based coordiante vector
@@ -90,7 +92,7 @@ namespace ippl {
          * @param code
          * @return size_t
          */
-        inline size_t get_depth(morton_code code) const;
+        KOKKOS_INLINE_FUNCTION size_t get_depth(morton_code code) const;
 
         /**
          * @brief Returns the code of this parent

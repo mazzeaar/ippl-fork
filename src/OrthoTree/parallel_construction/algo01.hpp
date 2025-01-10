@@ -119,6 +119,8 @@ namespace ippl {
         // in the domain
         //  The lambda checks that two morton codes are sorted and that there are
         //  no other morton codes between them that overlaps neither
+
+#ifdef NDEBUG
         auto is_sorted_and_contiguous = [this](const morton_code& a, const morton_code& b) {
             if (b <= a || morton_helper.is_descendant(b, a)) {
                 return false;
@@ -126,6 +128,7 @@ namespace ippl {
             return b <= morton_helper.get_deepest_first_descendant(
                 a + morton_helper.get_step_size(a));
             };
+#endif
 
         assert(std::is_sorted(tree_view.data(), tree_view.data() + tree_view.size(),
             is_sorted_and_contiguous)
