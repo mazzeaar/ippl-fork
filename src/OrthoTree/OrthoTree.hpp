@@ -18,7 +18,7 @@ namespace ippl {
         , max_particles_per_node_m(max_particles_per_node)
         , root_bounds_m(root_bounds)
         , morton_helper(max_depth)
-        , aid_list_m(AidList<Dim>(max_depth))
+        , aid_list_m(AidList<Dim>(max_depth, max_particles_per_node))
         , logger("OrthoTree", std::cout, INFORM_ALL_NODES) {
         world_rank = Comm->rank();
         world_size = Comm->size();
