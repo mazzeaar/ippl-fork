@@ -56,7 +56,8 @@ namespace ippl {
         }
         IpplTimings::TimerRef sort_aidlist = IpplTimings::getTimer("Sort AidList Timer");
         IpplTimings::startTimer(sort_aidlist);
-        sort_local_aidlist();
+        // sort_local_aidlist();
+        sort_local_aidlist_kokkos();
         IpplTimings::stopTimer(sort_aidlist);
     }
 
@@ -281,7 +282,7 @@ namespace ippl {
     // reason
     //  would be cool to try again using cuda
     template <size_t Dim>
-    void AidList<Dim>::sort_local_aidlist_kokkos() {
+    KOKKOS_INLINE_FUNCTION void AidList<Dim>::sort_local_aidlist_kokkos() {
         Kokkos::Profiling::pushRegion("aid_list::sort_local_aidlist");
         Kokkos::UnorderedMap<morton_code, int> map(size());
         using map_op_type     = Kokkos::UnorderedMapInsertOpTypes<Kokkos::View<int*>, morton_code>;
@@ -289,14 +290,12 @@ namespace ippl {
         atomic_add_type atomic_add;
 
         // fill p_ids, m_cs and map
-        {
-            auto local_octants = octants;
-            Kokkos::parallel_for(
-                "aid_list::fill map", size(), KOKKOS_LAMBDA(const int i) {
-                    morton_code key = local_octants(i);
-                    map.insert(key, 1, atomic_add);
-                });
-        }
+        auto local_octants = octants;
+        Kokkos::parallel_for(
+            "aid_list::fill map", size(), KOKKOS_LAMBDA(const int i) {
+                morton_code key = local_octants(i);
+                map.insert(key, 1, atomic_add);
+            });
 
         // get the number of unique keys
         int num_unique_keys = map.size();
@@ -346,7 +345,7 @@ namespace ippl {
 
         {
             auto local_octants = octants;
-            auto local_pids = particle_ids;
+            auto local_pids    = particle_ids;
             Kokkos::parallel_for(
                 "aid_list::sort_local_octants::Refill p_ids and m_cs", size(),
                 KOKKOS_LAMBDA(const int i) {
