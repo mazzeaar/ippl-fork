@@ -34,8 +34,8 @@ using dim_type                  = unsigned short int;
 using child_id_type             = unsigned int;
 
 // Node Types
-using morton_node_id_type       = unsigned int;
-using grid_id_type              = unsigned int;
+using morton_node_id_type       = long long unsigned int;
+using grid_id_type              = long long unsigned int;
 
 // Particle Types
 using particle_type             = OrthoTreeParticle<ippl::ParticleSpatialLayout<double,3>>;

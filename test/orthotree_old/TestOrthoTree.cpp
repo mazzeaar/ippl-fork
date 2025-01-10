@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
         std::mt19937_64 eng;
         std::uniform_real_distribution<double> unif(0.25, 0.5);
 
-        unsigned int n=512000000;
+        unsigned int n=512;
         particles.create(n);
         for(unsigned int i=0; i<n; ++i){
             particles.R(i) = ippl::Vector<double, 3>{unif(eng),unif(eng),unif(eng)};
@@ -29,15 +29,19 @@ int main(int argc, char* argv[]) {
         }
 
         IpplTimings::TimerRef timer = IpplTimings::getTimer("orthotree_build");
+        std::cout << "Starting Timer\n";
         IpplTimings::startTimer(timer);
+        std::cout << "Building OrthoTree\n";
 
-        ippl::OrthoTree tree(particles,  2 , 15, 3, ippl::BoundingBox<3>{{-1,-1,-1},{1,1,1}});
+        ippl::OrthoTree tree(particles,  2 , 10, 3, ippl::BoundingBox<3>{{-1,-1,-1},{1,1,1}});
 
+        std::cout << "Stopping Timer\n";
         IpplTimings::stopTimer(timer);
 
+        std::cout << "Printing Timings\n";
         IpplTimings::print();
         IpplTimings::print("timings.dat");
-        // tree.PrintStructure();
+        //  tree.PrintStructure();
     }
 
     ippl::finalize();
